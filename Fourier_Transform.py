@@ -82,33 +82,31 @@ def dft(inputs, twiddle_array, tuning_radii=None, tuning_angles=None):
     :return: DFT of the Input Signal (dtype = tf.float32)
     """
 
-    print('Checking input type')
+    # Checking input type
     if not tf.is_tensor(inputs):
-        print('--Changing input to tensor')
+        # --Changing input to tensor
         inputs = tf.convert_to_tensor(inputs, dtype=tf.complex64)
 
     if not (inputs.dtype == tf.complex64):
-        print('--Changing input to complex64')
+        # --Changing input to complex64
         inputs = tf.cast(inputs, tf.complex64)
 
     N = inputs.shape.as_list()[-1]
     if N is not None:
-        print('Checking input length')
+        # Checking input length
         if not math.log2(N).is_integer():
-            print('--Changing input length')
+            # --Changing input length
             num_zeros_to_add = next_power_of_2(N) - N
             inputs = tf.concat([inputs, tf.zeros(num_zeros_to_add, dtype=tf.complex64)])
 
     if tuning_radii is not None and tuning_angles is not None:
-        """ twiddle_array = (radii * e ^ -j*angles) * twiddle_array """
-        print('Applying Weights')
+        # twiddle_array = (radii * e ^ -j*angles) * twiddle_array
         twiddle_array = tf.multiply(tf.multiply(tf.complex(tuning_radii, 0.0), tf.math.exp(tf.multiply(tf.complex(0.0, -1.0), tf.complex(tuning_angles, 0.0)))), twiddle_array)
 
-    print('Performing DFT')
-    """ return = | twiddle_array . inputs | """
-    print('Shape of input: ', inputs.shape.as_list())
+    # return = | twiddle_array . inputs |
+    if len(inputs.shape.as_list()) > 1:
+        inputs = inputs[0]
     ret = tf.abs(tf.tensordot(twiddle_array, inputs, axes=1), name='dft_calc')
-    print('Shape of output: ', ret.shape.as_list())
 
     def grad(dy):
         return tf.abs(tf.tensordot(twiddle_array, tf.cast(dy, dtype=tf.complex64), axes=1), name='dy/dx'), dy, dy
@@ -184,7 +182,7 @@ if __name__ == '__main__':
     """
 
 
-    def random_sine_generator(batch_size=5):
+    def random_sine_generator(batch_size=1):
         x = np.linspace(0, 100, 2 ** 4)
         while True:
             batch_samples = np.zeros(shape=(batch_size, len(x)))
