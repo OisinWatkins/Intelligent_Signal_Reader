@@ -71,11 +71,12 @@ def fft(inputs, tuning_radii=None, tuning_angles=None):
 
 
 @tf.custom_gradient
-def dft(inputs, tuning_radii=None, tuning_angles=None):
+def dft(inputs, twiddle_array, tuning_radii=None, tuning_angles=None):
     """
-    Performs DFT algorithm on the inputs using the tuning_radii and tuning_angles.
+    Performs DFT algorithm on the inputs using the tuning_radii and tuning_angles to tune the twiddle array input.
 
-    :param inputs:Input Signal (Real or Complex data acceptable)
+    :param inputs: Input Signal (Real or Complex data acceptable, function will cast to Complex64 regardless)
+    :param twiddle_array: Array of Twiddle Factors which is N x N in size. Must be of dtype Complex64
     :param tuning_radii: Tensor from the Layer object, used to tune the magnitude of each twiddle factor
     :param tuning_angles: Tensor from the Layer object, used to tune the angle of each twiddle factor
     :return: DFT of the Input Signal (dtype = tf.float32)
@@ -90,44 +91,33 @@ def dft(inputs, tuning_radii=None, tuning_angles=None):
         print('--Changing input to complex64')
         inputs = tf.cast(inputs, tf.complex64)
 
-    N = inputs.shape.as_list()[0]
+    N = inputs.shape.as_list()[-1]
     if N is not None:
         print('Checking input length')
         if not math.log2(N).is_integer():
             print('--Changing input length')
             num_zeros_to_add = next_power_of_2(N) - N
             inputs = tf.concat([inputs, tf.zeros(num_zeros_to_add, dtype=tf.complex64)])
-            N = inputs.shape.as_list()[0]
 
-        W = []
-        print('Making Twiddle Array')
-        for i in range(N):
-            row = []
-            for j in range(N):
-                row.append(Wnp(N=N, p=(i*j)))
-            W.append(row)
+    if tuning_radii is not None and tuning_angles is not None:
+        """ twiddle_array = (radii * e ^ -j*angles) * twiddle_array """
+        print('Applying Weights')
+        twiddle_array = tf.multiply(tf.multiply(tf.complex(tuning_radii, 0.0), tf.math.exp(tf.multiply(tf.complex(0.0, -1.0), tf.complex(tuning_angles, 0.0)))), twiddle_array)
 
-        W = tf.convert_to_tensor(W, dtype=tf.complex64)
-        if tuning_radii is not None and tuning_angles is not None:
-            print('Using Weights')
-            W = tf.multiply(tf.multiply(tf.complex(tuning_radii, 0.0), tf.math.exp(tf.multiply(tf.complex(0.0, -1.0), tf.complex(tuning_angles, 0.0)))), W)
+    print('Performing DFT')
+    """ return = | twiddle_array . inputs | """
+    print('Shape of input: ', inputs.shape.as_list())
+    ret = tf.abs(tf.tensordot(twiddle_array, inputs, axes=1), name='dft_calc')
+    print('Shape of output: ', ret.shape.as_list())
 
-        print('Performing DFT')
-        ret = tf.abs(tf.tensordot(W, inputs, axes=1), name='dft_calc')
+    def grad(dy):
+        return tf.abs(tf.tensordot(twiddle_array, tf.cast(dy, dtype=tf.complex64), axes=1), name='dy/dx'), dy, dy
 
-        def grad(dy):
-            return dy + W, dy + 1, dy + 1
-        return ret, grad
-    else:
-        print('Value of N is None')
-
-        def grad(dy):
-            return dy, dy, dy
-        return tf.zeros(shape=inputs.shape.as_list()[1:], dtype=tf.complex64), grad
+    return ret, grad
 
 
-# output_dft = tf.abs(dft(inputs=[1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0]))
-# output_fft = tf.abs(fft(inputs=[1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0]))
+# output_dft = dft(inputs=[1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0], twiddle_array=W, tuning_radii=Rad, tuning_angles=Ang)
+# output_fft = fft(inputs=[1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0])
 
 
 class FFT1D(layers.Layer):
@@ -167,14 +157,22 @@ class DFT1D(layers.Layer):
                                       dtype=tf.float32)
         self.angle = self.add_weight(shape=(num_samples, num_samples), initializer='zeros', trainable=True,
                                      dtype=tf.float32)
+        W = []
+        for i in range(num_samples):
+            row = []
+            for j in range(num_samples):
+                row.append(Wnp(N=num_samples, p=(i * j)))
+            W.append(row)
+
+        self.twiddle = tf.convert_to_tensor(W, dtype=tf.complex64)
 
     def call(self, inputs, **kwargs):
-        output_val = dft(inputs, self.radius, self.angle)
+        output_val = dft(inputs, self.twiddle, self.radius, self.angle)
         return output_val
 
     def get_config(self):
         config = super(DFT1D, self).get_config()
-        config.update({'radius': self.radius, 'angle': self.angle})
+        config.update({'radius': self.radius, 'angle': self.angle, 'twiddle': self.twiddle})
         return config
 
 
@@ -189,15 +187,15 @@ if __name__ == '__main__':
     def random_sine_generator(batch_size=5):
         x = np.linspace(0, 100, 2 ** 4)
         while True:
-            batch_samples = np.zeros(shape=(batch_size, 1, len(x)))
-            batch_targets = np.zeros(shape=(batch_size, 1, len(x)))
+            batch_samples = np.zeros(shape=(batch_size, len(x)))
+            batch_targets = np.zeros(shape=(batch_size, len(x)))
             for i in range(batch_size):
                 clean_sig = (1 + 10 * np.random.random()) * np.sin(x + np.random.random())
                 clean_fft = np.fft.fft(clean_sig)
                 noisy_sig = clean_sig + np.random.normal(scale=0.1, size=len(x))
 
-                batch_samples[i, :, :] = noisy_sig
-                batch_targets[i, :, :] = np.abs(clean_fft)
+                batch_samples[i, :] = noisy_sig
+                batch_targets[i, :] = np.abs(clean_fft)
 
             yield batch_samples, batch_targets
 
@@ -205,7 +203,7 @@ if __name__ == '__main__':
     generator = random_sine_generator(batch_size=1)
     eg_sig = np.linspace(0, 100, 2 ** 4)
 
-    input_tensor = Input(shape=(1, len(eg_sig)))
+    input_tensor = Input(shape=len(eg_sig))
     output_layer = DFT1D(input_shape=input_tensor.shape, name='dft_1d')
     output = output_layer(input_tensor)
     model = Model(input_tensor, output)
