@@ -109,7 +109,7 @@ def dft(inputs, twiddle_array, tuning_radii=None, tuning_angles=None):
     ret = tf.abs(tf.tensordot(twiddle_array, inputs, axes=1), name='dft_calc')
 
     def grad(dy):
-        return tf.abs(tf.tensordot(twiddle_array, tf.cast(dy, dtype=tf.complex64), axes=1), name='dy/dx'), dy, dy
+        return tf.abs(tf.tensordot(twiddle_array, tf.cast(dy, dtype=tf.complex64), axes=1), name='dy/dx'), dy, dy, dy
 
     return ret, grad
 
