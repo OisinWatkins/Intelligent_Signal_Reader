@@ -9,7 +9,7 @@ https://github.com/OisinWatkins/MATLAB_RADAR_Simulator
 
 ### Simple Networks:
 _Simple_Dense_Network.py_, _Conv_Network.py_, _Highway_Network.py_, _Divergent_Network.py_ and _Neural_Net_Theano.py_ 
-are all experiments in viewing the typical network layouts' response to complex RADAR data. As expected, no 
+are all experiments in viewing the typical network layouts' responses to complex RADAR data. As expected, no 
 network achieved much accuracy, given that the input data is so far removed from the output data.
 
 ### Intelligent Fourier Transform:
