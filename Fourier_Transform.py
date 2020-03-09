@@ -104,12 +104,15 @@ def dft(inputs, twiddle_array, tuning_radii=None, tuning_angles=None):
         twiddle_array = tf.multiply(tf.multiply(tf.complex(tuning_radii, 0.0), tf.math.exp(tf.multiply(tf.complex(0.0, -1.0), tf.complex(tuning_angles, 0.0)))), twiddle_array)
 
     # return = | twiddle_array . inputs |
-    if len(inputs.shape.as_list()) > 1:
+    input_shape = inputs.shape
+    if len(input_shape.as_list()) > 1:
         inputs = inputs[0]
     ret = tf.abs(tf.tensordot(twiddle_array, inputs, axes=1), name='dft_calc')
 
+    ret = tf.reshape(ret, shape=input_shape)
+
     def grad(dy):
-        return tf.abs(tf.tensordot(twiddle_array, tf.cast(dy, dtype=tf.complex64), axes=1), name='dy/dx'), dy, dy, dy
+        return tf.abs(tf.tensordot(twiddle_array, tf.cast(dy, dtype=tf.complex64), axes=1), name='dy/dx'), None, dy, dy
 
     return ret, grad
 
@@ -162,7 +165,8 @@ class DFT1D(layers.Layer):
                 row.append(Wnp(N=num_samples, p=(i * j)))
             W.append(row)
 
-        self.twiddle = tf.convert_to_tensor(W, dtype=tf.complex64)
+        self.twiddle = tf.Variable(initial_value=tf.convert_to_tensor(W, dtype=tf.complex64), trainable=False,
+                                   dtype=tf.complex64)
 
     def call(self, inputs, **kwargs):
         output_val = dft(inputs, self.twiddle, self.radius, self.angle)
