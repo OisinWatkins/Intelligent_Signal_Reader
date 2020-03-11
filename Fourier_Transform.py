@@ -104,15 +104,15 @@ def dft(inputs, twiddle_array, tuning_radii=None, tuning_angles=None):
         twiddle_array = tf.multiply(tf.multiply(tf.complex(tuning_radii, 0.0), tf.math.exp(tf.multiply(tf.complex(0.0, -1.0), tf.complex(tuning_angles, 0.0)))), twiddle_array)
 
     # return = | twiddle_array . inputs |
-    input_shape = inputs.shape
-    if len(input_shape.as_list()) > 1:
+    if len(inputs.shape.as_list()) > 1:
         inputs = inputs[0]
+
     ret = tf.abs(tf.tensordot(twiddle_array, inputs, axes=1), name='dft_calc')
 
-    ret = tf.reshape(ret, shape=input_shape)
+    # ret = tf.reshape(ret, shape=input_shape)
 
     def grad(dy):
-        return tf.abs(tf.tensordot(twiddle_array, tf.cast(dy, dtype=tf.complex64), axes=1), name='dy/dx'), None, dy, dy
+        return None, None, dy, dy
 
     return ret, grad
 
@@ -180,7 +180,7 @@ class DFT1D(layers.Layer):
 
 if __name__ == '__main__':
     """ 
-    Simple test function for the FFT1D class
+    Simple test function for the FFT1D and DFT1D classes
     run like this:
         `python -m Fourier_Transform` 
     """
@@ -201,6 +201,12 @@ if __name__ == '__main__':
 
             yield batch_samples, batch_targets
 
+    # for a, sample in enumerate(random_sine_generator()):
+    #     if a == 10:
+    #         break
+    #     print(a)
+    #     output = output_layer(inputs=sample[0][0][0])
+    #     print(output)
 
     generator = random_sine_generator(batch_size=1)
     eg_sig = np.linspace(0, 100, 2 ** 4)
@@ -209,13 +215,6 @@ if __name__ == '__main__':
     output_layer = DFT1D(input_shape=input_tensor.shape, name='dft_1d')
     output = output_layer(input_tensor)
     model = Model(input_tensor, output)
-
-    # for a, sample in enumerate(random_sine_generator()):
-    #     if a == 10:
-    #         break
-    #     print(a)
-    #     output = output_layer(inputs=sample[0][0][0])
-    #     print(output)
 
     model.compile(loss=losses.mean_absolute_error, optimizer='sgd')
     model.summary()
