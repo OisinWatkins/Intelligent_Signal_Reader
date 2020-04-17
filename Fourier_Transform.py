@@ -104,11 +104,17 @@ def dft(inputs, twiddle_array, tuning_radii=None, tuning_angles=None):
         twiddle_array = tf.multiply(tf.multiply(tf.complex(tuning_radii, 0.0), tf.math.exp(tf.multiply(tf.complex(0.0, -1.0), tf.complex(tuning_angles, 0.0)))), twiddle_array)
 
     # return = | twiddle_array . inputs |
-    if len(inputs.shape.as_list()) > 1:
-        inputs = inputs[0]
+    # The current issue is somewhere here. The maths is sound, however TF has issues doing computations when the
+    # dimensions of the input tensor are unknown. Inputs currently has shape (?, 16), correct size, but should be (16,),
+    # I think
+    print(inputs.shape)
+    input_shape = inputs.shape.as_list()
+    if input_shape[0] is None:
+        inputs = tf.reshape(inputs, (1, input_shape[1]))
+
+    print(inputs.shape)
 
     ret = tf.abs(tf.tensordot(twiddle_array, inputs, axes=1), name='dft_calc')
-
     # ret = tf.reshape(ret, shape=input_shape)
 
     def grad(dy):
