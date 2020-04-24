@@ -100,7 +100,7 @@ def dft(inputs, twiddle_array, tuning_radii=None, tuning_angles=None):
             inputs = tf.concat([inputs, tf.zeros(num_zeros_to_add, dtype=tf.complex64)])
 
     if tuning_radii is not None and tuning_angles is not None:
-        # twiddle_array = (radii * e ^ -j*angles) * twiddle_array
+        # tuned_twiddle_array = (radii * e ^ -j*angles) * twiddle_array
         twiddle_array = tf.multiply(tf.multiply(tf.complex(tuning_radii, 0.0), tf.math.exp(tf.multiply(tf.complex(0.0, -1.0), tf.complex(tuning_angles, 0.0)))), twiddle_array)
 
     # return = | twiddle_array . inputs |
@@ -118,7 +118,13 @@ def dft(inputs, twiddle_array, tuning_radii=None, tuning_angles=None):
     # ret = tf.reshape(ret, shape=input_shape)
 
     def grad(dy):
-        return None, None, dy, dy
+        # dy / dr = (e ^ -j*angles) * twiddle_array)
+        # dr = dy / (e ^ -j*angles) * twiddle_array)
+        dr = dy
+        # dy / dtheta = -j * (radii * e ^ -j*angles) * twiddle_array)
+        # dtheta = dy / -j * (radii * e ^ -j*angles) * twiddle_array)
+        dtheta = tf.divide(dy, tf.multiply(tf.complex(0.0, -1), twiddle_array), name='dtheta')
+        return None, None, dr, dtheta
 
     return ret, grad
 
