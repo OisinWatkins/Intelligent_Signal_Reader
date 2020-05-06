@@ -71,12 +71,13 @@ def fft(inputs, tuning_radii=None, tuning_angles=None):
 
 
 @tf.custom_gradient
-def dft(inputs, twiddle_array=None):
+def dft(inputs, twiddle_array=None, verbose=False):
     """
     Performs DFT algorithm on the inputs using the tuning_radii and tuning_angles to tune the twiddle array input.
 
     :param inputs: Input Signal (Real or Complex data acceptable, function will cast to Complex64 regardless).
     :param twiddle_array: Array of Twiddle Factors which is N x N in size. Must be of dtype Complex64.
+    :param verbose: Boolean value controlling whether or not the function prints notifications as it runs
     :return y_output: Magnitude DFT of the Input Signal (dtype = tf.float32).
     :return y_prediction: DFT of the Input Signal (dtype = tf.float32).
     :return grad: Handle to the grad() function, which computes the gradient of the Error signal.
@@ -85,10 +86,14 @@ def dft(inputs, twiddle_array=None):
     # Checking input type
     if not tf.is_tensor(inputs):
         # --Changing input to tensor
+        if verbose:
+            print('Changing input to tensor')
         inputs = tf.convert_to_tensor(inputs, dtype=tf.complex64)
 
     if not (inputs.dtype == tf.complex64):
         # --Changing input to complex64
+        if verbose:
+            print('Changing input to complex64')
         inputs = tf.cast(inputs, tf.complex64)
 
     N = inputs.shape.as_list()[-1]
@@ -96,11 +101,15 @@ def dft(inputs, twiddle_array=None):
         # Checking input length
         if not math.log2(N).is_integer():
             # --Changing input length
+            if verbose:
+                print('Changing input length')
             num_zeros_to_add = next_power_of_2(N) - N
             inputs = tf.concat([inputs, tf.zeros(num_zeros_to_add, dtype=tf.complex64)])
 
     if twiddle_array is None:
         # --Define the Twiddle Array for this calculation if one is not provided
+        if verbose:
+            print('Generating Twiddle Array')
         twiddle_array = []
         for i in range(N):
             row = []
@@ -121,7 +130,9 @@ def dft(inputs, twiddle_array=None):
 
     print(inputs.shape)
 
-    y_prediction = tf.tensordot(twiddle_array, inputs, axes=1, name='dft_calc')
+    if verbose:
+        print('Computing DFT')
+    y_prediction = tf.tensordot(inputs, twiddle_array, axes=1, name='dft_calc')
     y_output = tf.abs(y_prediction, name='dft_mag')
 
     def grad(dEdy):
@@ -129,8 +140,8 @@ def dft(inputs, twiddle_array=None):
         Function computes the gradient of the Error signal w.r.t. the inputs of the dft() function.
 
         :param dEdy: Gradient of the Error signal passed backwards from the next layer up in the network
-        :return dEdx: Gradient of the Error w.r.t the inputs to the DFT layer
-        :return dEdW:  Gradient of the Error w.r.t the Twiddle matrix in the DFT layer
+        :return dEdx: Gradient of the Error w.r.t. the inputs to the DFT layer
+        :return dEdW:  Gradient of the Error w.r.t. the Twiddle matrix in the DFT layer
         """
 
         # dEdx = dydx * dEdy
@@ -148,7 +159,7 @@ def dft(inputs, twiddle_array=None):
     return y_output, y_prediction, grad
 
 
-# output_dft = dft(inputs=[1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0], twiddle_array=W)
+# magnitude, truth = dft(inputs=[1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0], verbose=True)
 # output_fft = fft(inputs=[1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0])
 
 
@@ -184,8 +195,8 @@ class DFT1D(layers.Layer):
 
     def __init__(self, input_shape, **kwargs):
         super(DFT1D, self).__init__(**kwargs)
-        num_samples = next_power_of_2(input_shape.as_list()[-1])
 
+        num_samples = next_power_of_2(input_shape.as_list()[-1])
         W = []
         for i in range(num_samples):
             row = []
