@@ -71,15 +71,15 @@ def fft(inputs, tuning_radii=None, tuning_angles=None):
 
 
 @tf.custom_gradient
-def dft(inputs, twiddle_array, tuning_radii=None, tuning_angles=None):
+def dft(inputs, twiddle_array):
     """
     Performs DFT algorithm on the inputs using the tuning_radii and tuning_angles to tune the twiddle array input.
 
-    :param inputs: Input Signal (Real or Complex data acceptable, function will cast to Complex64 regardless)
-    :param twiddle_array: Array of Twiddle Factors which is N x N in size. Must be of dtype Complex64
-    :param tuning_radii: Tensor from the Layer object, used to tune the magnitude of each twiddle factor
-    :param tuning_angles: Tensor from the Layer object, used to tune the angle of each twiddle factor
-    :return: DFT of the Input Signal (dtype = tf.float32)
+    :param inputs: Input Signal (Real or Complex data acceptable, function will cast to Complex64 regardless).
+    :param twiddle_array: Array of Twiddle Factors which is N x N in size. Must be of dtype Complex64.
+    :return y_output: Magnitude DFT of the Input Signal (dtype = tf.float32).
+    :return y_prediction: DFT of the Input Signal (dtype = tf.float32).
+    :return grad: Handle to the grad() function, which computes the gradient of the Error signal.
     """
 
     # Checking input type
@@ -99,10 +99,6 @@ def dft(inputs, twiddle_array, tuning_radii=None, tuning_angles=None):
             num_zeros_to_add = next_power_of_2(N) - N
             inputs = tf.concat([inputs, tf.zeros(num_zeros_to_add, dtype=tf.complex64)])
 
-    if tuning_radii is not None and tuning_angles is not None:
-        # tuned_twiddle_array = (radii * e ^ -j*angles) * twiddle_array
-        twiddle_array = tf.multiply(tf.multiply(tf.complex(tuning_radii, 0.0), tf.math.exp(tf.multiply(tf.complex(0.0, -1.0), tf.complex(tuning_angles, 0.0)))), twiddle_array)
-
     # return = | twiddle_array . inputs |
     # The current issue is somewhere here. The maths is sound, however TF has issues doing computations when the
     # dimensions of the input tensor are unknown. Inputs currently has shape (?, 16), correct size, but should be (16,),
@@ -114,22 +110,34 @@ def dft(inputs, twiddle_array, tuning_radii=None, tuning_angles=None):
 
     print(inputs.shape)
 
-    ret = tf.abs(tf.tensordot(twiddle_array, inputs, axes=1), name='dft_calc')
-    # ret = tf.reshape(ret, shape=input_shape)
+    y_prediction = tf.tensordot(twiddle_array, inputs, axes=1, name='dft_calc')
+    y_output = tf.abs(y_prediction, name='dft_mag')
 
-    def grad(dy):
-        # dy / dr = (e ^ -j*angles) * twiddle_array)
-        # dr = dy / (e ^ -j*angles) * twiddle_array)
-        dr = dy
-        # dy / dtheta = -j * (radii * e ^ -j*angles) * twiddle_array)
-        # dtheta = dy / -j * (radii * e ^ -j*angles) * twiddle_array)
-        dtheta = tf.divide(dy, tf.multiply(tf.complex(0.0, -1), twiddle_array), name='dtheta')
-        return None, None, dr, dtheta
+    def grad(dEdy):
+        """
+        Function computes the gradient of the Error signal w.r.t. the inputs of the dft() function.
 
-    return ret, grad
+        :param dEdy: Gradient of the Error signal passed backwards from the next layer up in the network
+        :return dEdx: Gradient of the Error w.r.t the inputs to the DFT layer
+        :return dEdW:  Gradient of the Error w.r.t the Twiddle matrix in the DFT layer
+        """
+
+        # dEdx = dydx * dEdy
+        # dydx = W
+        # Therefore: dEdx = W * dEdy
+        dEdx = twiddle_array * dEdy
+
+        # dEdW = dydW * dEdy
+        # dydW = x
+        # Therefore: dEdW = x * dEdy
+        dEdW = inputs * dEdy
+
+        return dEdx, dEdW
+
+    return y_output, y_prediction, grad
 
 
-# output_dft = dft(inputs=[1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0], twiddle_array=W, tuning_radii=Rad, tuning_angles=Ang)
+# output_dft = dft(inputs=[1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0], twiddle_array=W)
 # output_fft = fft(inputs=[1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0])
 
 
@@ -166,10 +174,7 @@ class DFT1D(layers.Layer):
     def __init__(self, input_shape, **kwargs):
         super(DFT1D, self).__init__(**kwargs)
         num_samples = next_power_of_2(input_shape.as_list()[-1])
-        self.radius = self.add_weight(shape=(num_samples, num_samples), initializer='ones', trainable=True,
-                                      dtype=tf.float32)
-        self.angle = self.add_weight(shape=(num_samples, num_samples), initializer='zeros', trainable=True,
-                                     dtype=tf.float32)
+
         W = []
         for i in range(num_samples):
             row = []
@@ -177,16 +182,16 @@ class DFT1D(layers.Layer):
                 row.append(Wnp(N=num_samples, p=(i * j)))
             W.append(row)
 
-        self.twiddle = tf.Variable(initial_value=tf.convert_to_tensor(W, dtype=tf.complex64), trainable=False,
+        self.twiddle = tf.Variable(initial_value=tf.convert_to_tensor(W, dtype=tf.complex64), trainable=True,
                                    dtype=tf.complex64)
 
     def call(self, inputs, **kwargs):
-        output_val = dft(inputs, self.twiddle, self.radius, self.angle)
+        output_val = dft(inputs, self.twiddle)
         return output_val
 
     def get_config(self):
         config = super(DFT1D, self).get_config()
-        config.update({'radius': self.radius, 'angle': self.angle, 'twiddle': self.twiddle})
+        config.update({'twiddle': self.twiddle})
         return config
 
 
