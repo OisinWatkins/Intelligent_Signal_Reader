@@ -125,12 +125,12 @@ def dft(inputs, twiddle_array):
         # dEdx = dydx * dEdy
         # dydx = W
         # Therefore: dEdx = W * dEdy
-        dEdx = twiddle_array * dEdy
+        dEdx = tf.tensordot(dEdy, twiddle_array, name='dEdx')
 
         # dEdW = dydW * dEdy
         # dydW = x
         # Therefore: dEdW = x * dEdy
-        dEdW = inputs * dEdy
+        dEdW = tf.tensordot(tf.transpose(inputs), dEdy, name='dEdW')
 
         return dEdx, dEdW
 
