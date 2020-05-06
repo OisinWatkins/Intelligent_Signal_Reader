@@ -1,3 +1,11 @@
+"""
+Author: Oisín Watkins
+Email: oisin.watkins@analog.com
+
+Disclaimer: This script, and all scripts written in support of it, are property of Analog Devices International and its
+subsidiaries.
+"""
+
 import math
 import tensorflow as tf
 import numpy as np
@@ -71,19 +79,20 @@ def fft(inputs, tuning_radii=None, tuning_angles=None):
 
 
 @tf.custom_gradient
-def dft(inputs, twiddle_array=None, verbose=False):
+def dft(inputs: tf.Tensor or list, twiddle_array: tf.Tensor or list = None, verbose: bool = False):
     """
-    Performs DFT algorithm on the inputs using the tuning_radii and tuning_angles to tune the twiddle array input.
+    Performs DFT algorithm on the inputs.
 
     :param inputs: Input Signal (Real or Complex data acceptable, function will cast to Complex64 regardless).
-    :param twiddle_array: Array of Twiddle Factors which is N x N in size. Must be of dtype Complex64.
-    :param verbose: Boolean value controlling whether or not the function prints notifications as it runs
+    :param twiddle_array: Array of Twiddle Factors which is N x N in size (Real or Complex data acceptable, function
+           will cast to Complex64 regardless).
+    :param verbose: Boolean value controlling whether or not the function prints notifications as it runs.
     :return y_output: Magnitude DFT of the Input Signal (dtype = tf.float32).
-    :return y_prediction: DFT of the Input Signal (dtype = tf.float32).
-    :return grad: Handle to the grad() function, which computes the gradient of the Error signal.
+    :return y_prediction: DFT of the Input Signal (dtype = tf.complex64).
+    :return grad: Handle to the grad(...) function, which computes the gradient of the Error signal.
     """
 
-    # Checking input type
+    # Checking inputs for validity
     if not tf.is_tensor(inputs):
         # --Changing input to tensor
         if verbose:
@@ -106,6 +115,7 @@ def dft(inputs, twiddle_array=None, verbose=False):
             num_zeros_to_add = next_power_of_2(N) - N
             inputs = tf.concat([inputs, tf.zeros(num_zeros_to_add, dtype=tf.complex64)])
 
+    # Checking twiddle_array for validity
     if twiddle_array is None:
         # --Define the Twiddle Array for this calculation if one is not provided
         if verbose:
@@ -119,16 +129,28 @@ def dft(inputs, twiddle_array=None, verbose=False):
         # --Convert to complex64 tensor
         twiddle_array = tf.convert_to_tensor(twiddle_array, dtype=tf.complex64)
 
+    if not tf.is_tensor(twiddle_array):
+        # --Changing twiddle array to tensor
+        if verbose:
+            print('Changing twiddle array to tensor')
+        twiddle_array = tf.convert_to_tensor(twiddle_array, dtype=tf.complex64)
+
+    if not (twiddle_array.dtype == tf.complex64):
+        # --Changing twiddle array to complex64
+        if verbose:
+            print('Changing twiddle array to complex64')
+        twiddle_array = tf.cast(twiddle_array, dtype=tf.complex64)
+
     # return = | twiddle_array . inputs |
     # The current issue is somewhere here. The maths is sound, however TF has issues doing computations when the
     # dimensions of the input tensor are unknown. Inputs currently has shape (?, 16), correct size but should be (16,),
     # I think
-    print(inputs.shape)
-    input_shape = inputs.shape.as_list()
-    if input_shape[0] is None:
-        inputs = tf.reshape(inputs, (1, input_shape[1]))
-
-    print(inputs.shape)
+    # print(inputs.shape)
+    # input_shape = inputs.shape.as_list()
+    # if input_shape[0] is None:
+    #     inputs = tf.reshape(inputs, (1, input_shape[1]))
+    #
+    # print(inputs.shape)
 
     if verbose:
         print('Computing DFT')
@@ -137,11 +159,12 @@ def dft(inputs, twiddle_array=None, verbose=False):
 
     def grad(dEdy):
         """
-        Function computes the gradient of the Error signal w.r.t. the inputs of the dft() function.
+        Function computes the gradient of the Error signal w.r.t. the inputs of the dft(...) function.
 
         :param dEdy: Gradient of the Error signal passed backwards from the next layer up in the network
         :return dEdx: Gradient of the Error w.r.t. the inputs to the DFT layer
         :return dEdW:  Gradient of the Error w.r.t. the Twiddle matrix in the DFT layer
+        :return dEdverbose: Gradient of the Error w.r.t. the verbose parameter, which doesn't exist.
         """
 
         # dEdx = dydx * dEdy
@@ -154,7 +177,7 @@ def dft(inputs, twiddle_array=None, verbose=False):
         # Therefore: dEdW = x * dEdy
         dEdW = tf.tensordot(tf.transpose(inputs), dEdy, name='dEdW')
 
-        return dEdx, dEdW
+        return dEdx, dEdW, None
 
     return y_output, y_prediction, grad
 
