@@ -71,7 +71,7 @@ def fft(inputs, tuning_radii=None, tuning_angles=None):
 
 
 @tf.custom_gradient
-def dft(inputs, twiddle_array):
+def dft(inputs, twiddle_array=None):
     """
     Performs DFT algorithm on the inputs using the tuning_radii and tuning_angles to tune the twiddle array input.
 
@@ -99,9 +99,20 @@ def dft(inputs, twiddle_array):
             num_zeros_to_add = next_power_of_2(N) - N
             inputs = tf.concat([inputs, tf.zeros(num_zeros_to_add, dtype=tf.complex64)])
 
+    if twiddle_array is None:
+        # --Define the Twiddle Array for this calculation if one is not provided
+        twiddle_array = []
+        for i in range(N):
+            row = []
+            for j in range(N):
+                row.append(Wnp(N=N, p=(i * j)))
+            twiddle_array.append(row)
+        # --Convert to complex64 tensor
+        twiddle_array = tf.convert_to_tensor(twiddle_array, dtype=tf.complex64)
+
     # return = | twiddle_array . inputs |
     # The current issue is somewhere here. The maths is sound, however TF has issues doing computations when the
-    # dimensions of the input tensor are unknown. Inputs currently has shape (?, 16), correct size, but should be (16,),
+    # dimensions of the input tensor are unknown. Inputs currently has shape (?, 16), correct size but should be (16,),
     # I think
     print(inputs.shape)
     input_shape = inputs.shape.as_list()
