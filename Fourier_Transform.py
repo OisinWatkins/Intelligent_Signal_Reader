@@ -10,7 +10,7 @@ import math
 import tensorflow as tf
 import numpy as np
 from matplotlib import rc, pyplot as plt
-from scipy.fftpack import fft, fftshift
+from scipy.fftpack import fft
 from tensorflow.keras import layers, Model, losses, Input
 
 
@@ -293,7 +293,7 @@ if __name__ == '__main__':
         `python -m Fourier_Transform` 
     """
 
-    font = {'family': 'normal',
+    font = {'family': 'monospace',
             'weight': 'bold',
             'size': 5}
     rc('font', **font)
@@ -344,8 +344,13 @@ if __name__ == '__main__':
             yield batch_samples, batch_targets
 
 
-    signal_length = 2 ** 10
+    signal_length = 2 ** 8
     generator = random_sine_generator(signal_length, batch_size=1, plot_data=True)
+
+    input_tensor = Input(shape=signal_length)
+    print(input_tensor)
+    output_layer = DFT(input_shape=input_tensor.shape, name='dft_1')
+    print(output_layer)
 
     for a, sample in enumerate(generator):
         if a == 10:
@@ -356,7 +361,7 @@ if __name__ == '__main__':
     # output_fft = fft(inputs=[1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0])
 
     # input_tensor = Input(shape=(1, signal_length))
-    # output_layer = DFT(input_shape=input_tensor.shape, name='dft_1d')
+    # output_layer = DFT(input_shape=input_tensor.shape, name='dft_1')
     # output = output_layer(input_tensor)
     # model = Model(input_tensor, output)
     #
