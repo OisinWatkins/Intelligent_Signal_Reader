@@ -42,6 +42,8 @@ def plot_signal(time_stamp, sig_freq, NFFT, clean_sig=None, noisy_sig=None, clea
         axs[1, 1].set_xlabel('Sample points (N-point DFT)')
         axs[1, 1].set_ylabel('DFT Values')
 
+    plt.show()
+
 
 def sine_wave(f, overSampRate, phase, nCyl):
     """
@@ -294,9 +296,8 @@ if __name__ == '__main__':
         `python -m Fourier_Transform` 
     """
 
-    tf.compat.v1.enable_eager_execution()
-    tfe = tf.contrib.eager
-
+    # tf.compat.v1.enable_eager_execution()
+    # tfe = tf.contrib.eager
     def random_sine_generator(sig_len: int, batch_size: int = 1, plot_data: bool = False):
         while True:
             batch_samples = np.zeros(shape=(batch_size, sig_len))
@@ -306,12 +307,22 @@ if __name__ == '__main__':
                 num_cycles = (sig_len + 1) / OSR
                 sig_f = 10000000 * np.random.rand()
                 sig_phase = (-2*np.pi) + (4*np.pi) * np.random.rand()
+                NFFT = sig_len
 
                 t, clean_sig = sine_wave(f=sig_f, overSampRate=OSR, phase=sig_phase, nCyl=num_cycles)
+                if not math.log2(len(clean_sig)).is_integer():
+                    if len(clean_sig) > signal_length:
+                        clean_sig = clean_sig[0:signal_length]
+                        t = t[0:signal_length]
+                    else:
+                        num_zeros_to_append = len(clean_sig) - signal_length
+                        clean_sig = np.pad(clean_sig, [0, num_zeros_to_append], mode='constant', constant_values=0)
+                        t_delta = t[1] - t[0]
+                        for idx in range(num_zeros_to_append):
+                            t = np.pad(t, [0, 1], mode='constant', constant_values=t[-1] + t_delta)
 
-                NFFT = sig_len
                 clean_fft = fft(clean_sig, NFFT)
-                noisy_sig = clean_sig + np.random.normal(scale=0.5, size=sig_len)
+                noisy_sig = clean_sig + np.random.normal(scale=2, size=sig_len)
                 noisy_fft = fft(noisy_sig, NFFT)
 
                 if plot_data:
@@ -322,26 +333,26 @@ if __name__ == '__main__':
 
             yield batch_samples, batch_targets
 
-    # for a, sample in enumerate(generator):
-    #     if a == 10:
-    #         break
-    #     print(a)
-    #     output = output_layer(inputs=sample[0][0][0])
-    #     print(output)
+
+    signal_length = 2 ** 10
+    generator = random_sine_generator(signal_length, batch_size=1, plot_data=True)
+
+    for a, sample in enumerate(generator):
+        if a == 10:
+            break
+        print(a)
 
     # magnitude, truth = dft(inputs=[1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0], verbose=True)
     # output_fft = fft(inputs=[1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0])
-    signal_length = 2**10
-    generator = random_sine_generator(signal_length, batch_size=1, plot_data=True)
 
-    input_tensor = Input(shape=(1, signal_length))
-    output_layer = DFT(input_shape=input_tensor.shape, name='dft_1d')
-    output = output_layer(input_tensor)
-    model = Model(input_tensor, output)
-
-    model.compile(loss=losses.mean_squared_error, optimizer='sgd')
-    model.summary()
-
-    history = model.fit(x=generator, steps_per_epoch=10, epochs=5, validation_data=generator, validation_steps=10,
-                        verbose=True)
-    print(history)
+    # input_tensor = Input(shape=(1, signal_length))
+    # output_layer = DFT(input_shape=input_tensor.shape, name='dft_1d')
+    # output = output_layer(input_tensor)
+    # model = Model(input_tensor, output)
+    #
+    # model.compile(loss=losses.mean_squared_error, optimizer='sgd')
+    # model.summary()
+    #
+    # history = model.fit(x=generator, steps_per_epoch=10, epochs=5, validation_data=generator, validation_steps=10,
+    #                     verbose=True)
+    # print(history)
