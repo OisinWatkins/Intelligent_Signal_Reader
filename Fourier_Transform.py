@@ -9,7 +9,58 @@ subsidiaries.
 import math
 import tensorflow as tf
 import numpy as np
+from matplotlib import pyplot as plt
+from scipy.fftpack import fft, fftshift
 from tensorflow.keras import layers, Model, losses, Input
+
+
+def plot_signal(time_stamp, sig_freq, NFFT, clean_sig=None, noisy_sig=None, clean_fft=None, noisy_fft=None):
+    fig, axs = plt.subplots(2, 2)
+    if clean_sig is not None:
+        axs[0, 0].plot(time_stamp, clean_sig)  # plot using pyplot library from matplotlib package
+        axs[0, 0].set_title(f'Clean Sine wave f = {sig_freq} Hz')  # plot title
+        axs[0, 0].set_xlabel('Time (s)')  # x-axis label
+        axs[0, 0].set_ylabel('Amplitude')  # y-axis label
+
+    if clean_fft is not None:
+        nVals = np.arange(start=0, stop=NFFT)  # raw index for FFT plot
+        axs[0, 1].plot(nVals, np.abs(clean_fft))
+        axs[0, 1].set_title('Clean_Sig Double Sided FFT - without FFTShift')
+        axs[0, 1].set_xlabel('Sample points (N-point DFT)')
+        axs[0, 1].set_ylabel('DFT Values')
+
+    if noisy_sig is not None:
+        axs[1, 0].plot(time_stamp, noisy_sig)  # plot using pyplot library from matplotlib package
+        axs[1, 0].set_title('Noisy Sine wave f=' + str(sig_freq) + ' Hz')  # plot title
+        axs[1, 0].set_xlabel('Time (s)')  # x-axis label
+        axs[1, 0].set_ylabel('Amplitude')  # y-axis label
+
+    if noisy_fft is not None:
+        nVals = np.arange(start=0, stop=NFFT)  # raw index for FFT plot
+        axs[1, 1].plot(nVals, np.abs(noisy_fft))
+        axs[1, 1].set_title('Noisy_Sig Double Sided FFT - without FFTShift')
+        axs[1, 1].set_xlabel('Sample points (N-point DFT)')
+        axs[1, 1].set_ylabel('DFT Values')
+
+
+def sine_wave(f, overSampRate, phase, nCyl):
+    """
+    Generate sine wave signal.
+    Example:
+    f=10; overSampRate=30;
+    phase = 1/3*np.pi;nCyl = 5;
+    (t,g) = sine_wave(f,overSampRate,phase,nCyl)
+
+    :param f : frequency of sine wave in Hertz
+    :param overSampRate : oversampling rate (integer)
+    :param phase : desired phase shift in radians
+    :param nCyl : number of cycles of sine wave to generate
+    :return (t,g) : time base (t) and the signal g(t) as tuple
+    """
+    fs = overSampRate*f  # sampling frequency
+    t = np.arange(0, nCyl*1/f-1/fs, 1/fs)  # time base
+    g = np.sin(2*np.pi*f*t+phase)  # replace with cos if a cosine wave is desired
+    return t, g  # return time base and signal g(t) as tuple
 
 
 def next_power_of_2(x):
@@ -34,7 +85,7 @@ def Wnp(N, p):
 
 
 @tf.custom_gradient
-def fft(inputs, tuning_radii=None, tuning_angles=None):
+def fft_custom(inputs, tuning_radii=None, tuning_angles=None):
     """
     Performs FFT algorithm recursively on the inputs using the tuning_radii and tuning_angles.
 
@@ -197,7 +248,7 @@ class FFT(layers.Layer):
                                      initializer='zeros', trainable=True, dtype=tf.float32)
 
     def call(self, inputs, **kwargs):
-        output_val = fft(inputs, self.radius, self.angle)
+        output_val = fft_custom(inputs, self.radius, self.angle)
         return output_val
 
     def get_config(self):
@@ -246,21 +297,32 @@ if __name__ == '__main__':
     tf.compat.v1.enable_eager_execution()
     tfe = tf.contrib.eager
 
-    def random_sine_generator(x, batch_size=1):
+    def random_sine_generator(sig_len: int, batch_size: int = 1, plot_data: bool = False):
         while True:
-            batch_samples = np.zeros(shape=(batch_size, len(x)))
-            batch_targets = np.zeros(shape=(batch_size, len(x)))
+            batch_samples = np.zeros(shape=(batch_size, sig_len))
+            batch_targets = np.zeros(shape=(batch_size, sig_len))
             for i in range(batch_size):
-                clean_sig = (1 + 10 * np.random.random()) * np.sin(x + np.random.random())
-                clean_fft = np.fft.fft(clean_sig)
-                noisy_sig = clean_sig + np.random.normal(scale=0.1, size=len(x))
+                OSR = 10 * np.random.rand()
+                num_cycles = (sig_len + 1) / OSR
+                sig_f = 10000000 * np.random.rand()
+                sig_phase = (-2*np.pi) + (4*np.pi) * np.random.rand()
+
+                t, clean_sig = sine_wave(f=sig_f, overSampRate=OSR, phase=sig_phase, nCyl=num_cycles)
+
+                NFFT = sig_len
+                clean_fft = fft(clean_sig, NFFT)
+                noisy_sig = clean_sig + np.random.normal(scale=0.5, size=sig_len)
+                noisy_fft = fft(noisy_sig, NFFT)
+
+                if plot_data:
+                    plot_signal(t, sig_f, NFFT, clean_sig, noisy_sig, clean_fft, noisy_fft)
 
                 batch_samples[i, :] = noisy_sig
                 batch_targets[i, :] = np.abs(clean_fft)
 
             yield batch_samples, batch_targets
 
-    # for a, sample in enumerate(random_sine_generator()):
+    # for a, sample in enumerate(generator):
     #     if a == 10:
     #         break
     #     print(a)
@@ -269,11 +331,10 @@ if __name__ == '__main__':
 
     # magnitude, truth = dft(inputs=[1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0], verbose=True)
     # output_fft = fft(inputs=[1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0])
+    signal_length = 2**10
+    generator = random_sine_generator(signal_length, batch_size=1, plot_data=True)
 
-    eg_sig = np.linspace(0, 100, 2 ** 4)
-    generator = random_sine_generator(eg_sig, batch_size=1)
-
-    input_tensor = Input(shape=len(eg_sig))
+    input_tensor = Input(shape=(1, signal_length))
     output_layer = DFT(input_shape=input_tensor.shape, name='dft_1d')
     output = output_layer(input_tensor)
     model = Model(input_tensor, output)
