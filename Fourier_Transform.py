@@ -14,8 +14,7 @@ from scipy.fftpack import fft, fftshift
 from tensorflow.keras import layers, Model, losses, Input
 
 
-def plot_signal(time_stamp, sig_freq, NFFT, clean_sig=None, noisy_sig=None, clean_fft=None, noisy_fft=None):
-    fig, axs = plt.subplots(2, 2)
+def plot_signal(fig, axs, time_stamp, sig_freq, NFFT, clean_sig=None, noisy_sig=None, clean_fft=None, noisy_fft=None):
     if clean_sig is not None:
         axs[0, 0].plot(time_stamp, clean_sig)  # plot using pyplot library from matplotlib package
         axs[0, 0].set_title(f'Clean Sine wave f = {sig_freq} Hz')  # plot title
@@ -41,8 +40,6 @@ def plot_signal(time_stamp, sig_freq, NFFT, clean_sig=None, noisy_sig=None, clea
         axs[1, 1].set_title('Noisy_Sig Double Sided FFT - without FFTShift')
         axs[1, 1].set_xlabel('Sample points (N-point DFT)')
         axs[1, 1].set_ylabel('DFT Values')
-
-    plt.show()
 
 
 def sine_wave(f, overSampRate, phase, nCyl):
@@ -299,6 +296,8 @@ if __name__ == '__main__':
     # tf.compat.v1.enable_eager_execution()
     # tfe = tf.contrib.eager
     def random_sine_generator(sig_len: int, batch_size: int = 1, plot_data: bool = False):
+        fig, axs = plt.subplots(2, 2)
+        plt.ion()
         while True:
             batch_samples = np.zeros(shape=(batch_size, sig_len))
             batch_targets = np.zeros(shape=(batch_size, sig_len))
@@ -326,7 +325,13 @@ if __name__ == '__main__':
                 noisy_fft = fft(noisy_sig, NFFT)
 
                 if plot_data:
-                    plot_signal(t, sig_f, NFFT, clean_sig, noisy_sig, clean_fft, noisy_fft)
+                    plot_signal(fig, axs, t, sig_f, NFFT, clean_sig, noisy_sig, clean_fft, noisy_fft)
+                    plt.show()
+                    plt.pause(1)
+                    axs[0, 0].clear()
+                    axs[0, 1].clear()
+                    axs[1, 0].clear()
+                    axs[1, 1].clear()
 
                 batch_samples[i, :] = noisy_sig
                 batch_targets[i, :] = np.abs(clean_fft)
