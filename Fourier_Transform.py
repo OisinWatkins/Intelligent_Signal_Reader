@@ -71,7 +71,9 @@ def fft(inputs, tuning_radii=None, tuning_angles=None):
 
         def grad():
             return 0, 1, 1
-        return tf.abs([tf.add(tf.cast(even[k], dtype=tf.complex64), T[k]) for k in range(N // 2)] + [tf.subtract(tf.cast(even[k], dtype=tf.complex64), T[k]) for k in range(N // 2)], name='fft_calc'), grad
+
+        return tf.abs([tf.add(tf.cast(even[k], dtype=tf.complex64), T[k]) for k in range(N // 2)] + [
+            tf.subtract(tf.cast(even[k], dtype=tf.complex64), T[k]) for k in range(N // 2)], name='fft_calc'), grad
     else:
         def grad():
             return 0, 0, 0
@@ -88,7 +90,6 @@ def dft(inputs: tf.Tensor or list, twiddle_array: tf.Tensor or list = None, verb
            will cast to Complex64 regardless).
     :param verbose: Boolean value controlling whether or not the function prints notifications as it runs.
     :return y_output: Magnitude DFT of the Input Signal (dtype = tf.float32).
-    :return y_prediction: DFT of the Input Signal (dtype = tf.complex64).
     :return grad: Handle to the grad(...) function, which computes the gradient of the Error signal.
     """
 
@@ -141,6 +142,10 @@ def dft(inputs: tf.Tensor or list, twiddle_array: tf.Tensor or list = None, verb
             print('Changing twiddle array to complex64')
         twiddle_array = tf.cast(twiddle_array, dtype=tf.complex64)
 
+    assert inputs.shape.as_list()[-1] == twiddle_array.shape.as_list()[0] and \
+        inputs.shape.as_list()[-1] == twiddle_array.shape.as_list()[1], \
+        'Input tensor and Twiddle Array do not have compatible shapes'
+
     # return = | twiddle_array . inputs |
     # The current issue is somewhere here. The maths is sound, however TF has issues doing computations when the
     # dimensions of the input tensor are unknown. Inputs currently has shape (?, 16), correct size but should be (16,),
@@ -164,7 +169,6 @@ def dft(inputs: tf.Tensor or list, twiddle_array: tf.Tensor or list = None, verb
         :param dEdy: Gradient of the Error signal passed backwards from the next layer up in the network
         :return dEdx: Gradient of the Error w.r.t. the inputs to the DFT layer
         :return dEdW:  Gradient of the Error w.r.t. the Twiddle matrix in the DFT layer
-        :return dEdverbose: Gradient of the Error w.r.t. the verbose parameter, which doesn't exist.
         """
 
         # dEdx = dydx * dEdy
@@ -177,13 +181,9 @@ def dft(inputs: tf.Tensor or list, twiddle_array: tf.Tensor or list = None, verb
         # Therefore: dEdW = x * dEdy
         dEdW = tf.tensordot(tf.transpose(inputs), dEdy, name='dEdW')
 
-        return dEdx, dEdW, None
+        return dEdx, dEdW
 
-    return y_output, y_prediction, grad
-
-
-# magnitude, truth = dft(inputs=[1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0], verbose=True)
-# output_fft = fft(inputs=[1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0])
+    return y_output, grad
 
 
 class FFT1D(layers.Layer):
@@ -231,7 +231,7 @@ class DFT1D(layers.Layer):
                                    dtype=tf.complex64)
 
     def call(self, inputs, **kwargs):
-        output_val = dft(inputs, self.twiddle)
+        output_val = dft(inputs, self.twiddle, verbose=True)
         return output_val
 
     def get_config(self):
@@ -270,6 +270,9 @@ if __name__ == '__main__':
     #     output = output_layer(inputs=sample[0][0][0])
     #     print(output)
 
+    # magnitude, truth = dft(inputs=[1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0], verbose=True)
+    # output_fft = fft(inputs=[1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0])
+
     generator = random_sine_generator(batch_size=1)
     eg_sig = np.linspace(0, 100, 2 ** 4)
 
@@ -278,7 +281,7 @@ if __name__ == '__main__':
     output = output_layer(input_tensor)
     model = Model(input_tensor, output)
 
-    model.compile(loss=losses.mean_absolute_error, optimizer='sgd')
+    model.compile(loss=losses.mean_squared_error, optimizer='sgd')
     model.summary()
 
     history = model.fit(x=generator, steps_per_epoch=10, epochs=5, validation_data=generator, validation_steps=10,
