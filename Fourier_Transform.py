@@ -11,9 +11,6 @@ import tensorflow as tf
 import numpy as np
 from tensorflow.keras import layers, Model, losses, Input
 
-# tf.enable_eager_execution()
-# tfe = tf.contrib.eager
-
 
 def next_power_of_2(x):
     """
@@ -72,8 +69,7 @@ def fft(inputs, tuning_radii=None, tuning_angles=None):
         def grad():
             return 0, 1, 1
 
-        return tf.abs([tf.add(tf.cast(even[k], dtype=tf.complex64), T[k]) for k in range(N // 2)] + [
-            tf.subtract(tf.cast(even[k], dtype=tf.complex64), T[k]) for k in range(N // 2)], name='fft_calc'), grad
+        return tf.abs([tf.add(tf.cast(even[k], dtype=tf.complex64), T[k]) for k in range(N // 2)] + [tf.subtract(tf.cast(even[k], dtype=tf.complex64), T[k]) for k in range(N // 2)], name='fft_calc'), grad
     else:
         def grad():
             return 0, 0, 0
@@ -186,14 +182,14 @@ def dft(inputs: tf.Tensor or list, twiddle_array: tf.Tensor or list = None, verb
     return y_output, grad
 
 
-class FFT1D(layers.Layer):
+class FFT(layers.Layer):
     """
-    This layer is designed to initially perform a standard 1D FFT. As the layer trains it will (hopefully) learn
+    This layer is designed to initially perform a standard FFT. As the layer trains it will (hopefully) learn
     to keep noise out of the spectrum
     """
 
     def __init__(self, input_shape, **kwargs):
-        super(FFT1D, self).__init__(**kwargs)
+        super(FFT, self).__init__(**kwargs)
         num_samples = next_power_of_2(input_shape.as_list()[-1])
         self.radius = self.add_weight(shape=(1, ((num_samples // 2) * math.log2(num_samples))),
                                       initializer='ones', trainable=True, dtype=tf.float32)
@@ -205,19 +201,19 @@ class FFT1D(layers.Layer):
         return output_val
 
     def get_config(self):
-        config = super(FFT1D, self).get_config()
+        config = super(FFT, self).get_config()
         config.update({'radius': self.radius, 'angle': self.angle})
         return config
 
 
-class DFT1D(layers.Layer):
+class DFT(layers.Layer):
     """
-    This layer is designed to initially perform a standard 1D DFT. As the layer trains it will (hopefully) learn
+    This layer is designed to initially perform a standard DFT. As the layer trains it will (hopefully) learn
     to keep noise out of the spectrum
     """
 
     def __init__(self, input_shape, **kwargs):
-        super(DFT1D, self).__init__(**kwargs)
+        super(DFT, self).__init__(**kwargs)
 
         num_samples = next_power_of_2(input_shape.as_list()[-1])
         W = []
@@ -235,21 +231,22 @@ class DFT1D(layers.Layer):
         return output_val
 
     def get_config(self):
-        config = super(DFT1D, self).get_config()
+        config = super(DFT, self).get_config()
         config.update({'twiddle': self.twiddle})
         return config
 
 
 if __name__ == '__main__':
     """ 
-    Simple test function for the FFT1D and DFT1D classes
+    Simple test function for the FFT and DFT classes
     run like this:
         `python -m Fourier_Transform` 
     """
 
+    tf.compat.v1.enable_eager_execution()
+    tfe = tf.contrib.eager
 
-    def random_sine_generator(batch_size=1):
-        x = np.linspace(0, 100, 2 ** 4)
+    def random_sine_generator(x, batch_size=1):
         while True:
             batch_samples = np.zeros(shape=(batch_size, len(x)))
             batch_targets = np.zeros(shape=(batch_size, len(x)))
@@ -273,11 +270,11 @@ if __name__ == '__main__':
     # magnitude, truth = dft(inputs=[1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0], verbose=True)
     # output_fft = fft(inputs=[1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0])
 
-    generator = random_sine_generator(batch_size=1)
     eg_sig = np.linspace(0, 100, 2 ** 4)
+    generator = random_sine_generator(eg_sig, batch_size=1)
 
     input_tensor = Input(shape=len(eg_sig))
-    output_layer = DFT1D(input_shape=input_tensor.shape, name='dft_1d')
+    output_layer = DFT(input_shape=input_tensor.shape, name='dft_1d')
     output = output_layer(input_tensor)
     model = Model(input_tensor, output)
 
