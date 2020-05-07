@@ -9,7 +9,7 @@ subsidiaries.
 import math
 import tensorflow as tf
 import numpy as np
-from matplotlib import pyplot as plt
+from matplotlib import rc, pyplot as plt
 from scipy.fftpack import fft, fftshift
 from tensorflow.keras import layers, Model, losses, Input
 
@@ -293,8 +293,13 @@ if __name__ == '__main__':
         `python -m Fourier_Transform` 
     """
 
+    font = {'family': 'normal',
+            'weight': 'bold',
+            'size': 5}
+    rc('font', **font)
     # tf.compat.v1.enable_eager_execution()
     # tfe = tf.contrib.eager
+
     def random_sine_generator(sig_len: int, batch_size: int = 1, plot_data: bool = False):
         fig, axs = plt.subplots(2, 2)
         plt.ion()
