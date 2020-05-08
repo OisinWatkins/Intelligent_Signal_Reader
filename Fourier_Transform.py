@@ -6,6 +6,8 @@ Disclaimer: This script, and all scripts written in support of it, are property 
 subsidiaries.
 """
 
+import os
+import csv
 import math
 import tensorflow as tf
 import numpy as np
@@ -14,7 +16,53 @@ from scipy.fftpack import fft
 from tensorflow.keras import layers, Model, losses, Input
 
 
-def plot_signal(fig, axs, time_stamp, sig_freq, NFFT, clean_sig=None, noisy_sig=None, clean_fft=None, noisy_fft=None):
+def generate_twiddle_arrays(directory: str = os.getcwd(), lowest_power_of_2: int = 1, highest_power_of_2: int = 1):
+    """
+    Function generates csv files to contain the twiddle arrays for later use, makes creating objects of DFT layer faster
+    generate_twiddle_arrays(directory='C:\\Users\\owatkins\\OneDrive - Analog Devices, Inc\\Documents\\Project Folder\\
+    Project 3\\Code\\Python\\Default Twiddle Arrays', highest_power_of_2=3)
+
+    :param directory: Folder to store twiddle array csv's in
+    :param lowest_power_of_2: The lowest power of 2 needed for generation.
+    :param highest_power_of_2: The highest power of 2 needed for generation.
+    :return: None
+    """
+    tf.compat.v1.enable_eager_execution()
+    tfe = tf.contrib.eager
+    sess = tf.Session()
+    print(f'Saving Twiddle Arrays to: {directory}...')
+    with sess.as_default():
+        for power in range(lowest_power_of_2, highest_power_of_2 + 1):
+            num_samples = 2 ** power
+            W = []
+            for i in range(num_samples):
+                row = []
+                for j in range(num_samples):
+                    row.append(Wnp(N=num_samples, p=(i * j)).numpy())
+                W.append(row)
+            file_dir = directory + '\\' + 'TA_2^' + str(power) + '.csv'
+            print(f'Now Saving: {file_dir}')
+            # tf.io.write_file(filename=file_dir, contents=W)
+            with open(file_dir, 'w+') as f:
+                csvWriter = csv.writer(f, delimiter=',')
+                csvWriter.writerows(W)
+    print('Saving Complete')
+
+
+def plot_signal(axs, time_stamp, sig_freq, NFFT, clean_sig=None, noisy_sig=None, clean_fft=None, noisy_fft=None):
+    """
+    This function plots a clean and a noisy signla with the respective ffts in a single window for comparison.
+
+    :param axs: Handle for the 4 axes used to plot the information
+    :param time_stamp: Array holding the time stamps for each time domain signal sample
+    :param sig_freq: Real value of the frequency of the signal of interest.
+    :param NFFT: The length of the DFT/FFT
+    :param clean_sig: Array holding the clean signal without noise.
+    :param noisy_sig: Array holding the signal distorted with noise
+    :param clean_fft: Array holding the fft of the clean signal
+    :param noisy_fft: Array holding the fft of the noisy signal
+    :return: None
+    """
     if clean_sig is not None:
         axs[0, 0].plot(time_stamp, clean_sig)  # plot using pyplot library from matplotlib package
         axs[0, 0].set_title(f'Clean Sine wave f = {sig_freq} Hz')  # plot title
@@ -74,7 +122,7 @@ def next_power_of_2(x):
 
 def Wnp(N, p):
     """
-    Function makes one Twiddle Factor needed for the FFT algorithm
+    Function makes one Twiddle Factor needed for the Fourier Transform algorithm
 
     :param N: Length of the Fourier Transform input sequence
     :param p: root number for this particular twiddle factor
