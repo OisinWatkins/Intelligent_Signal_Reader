@@ -175,13 +175,12 @@ def fft_custom(inputs, tuning_radii=None, tuning_angles=None):
 
 
 @tf.custom_gradient
-def dft(inputs: tf.Tensor or list, twiddle_array: tf.Tensor or list = None, verbose: bool = False):
+def dft(inputs: tf.Tensor or list or np.ndarray, twiddle_array: tf.Tensor or list or np.ndarray = None, verbose: bool = False):
     """
     Performs DFT algorithm on the inputs.
 
-    :param inputs: Input Signal (Real or Complex data acceptable, function will cast to Complex64 regardless).
-    :param twiddle_array: Array of Twiddle Factors which is N x N in size (Real or Complex data acceptable, function
-           will cast to Complex64 regardless).
+    :param inputs: Input Signal (Real or Complex data acceptable, function will cast to tf.complex64 regardless).
+    :param twiddle_array: Array of Twiddle Factors which is N x N in size.
     :param verbose: Boolean value controlling whether or not the function prints notifications as it runs.
     :return y_output: Magnitude DFT of the Input Signal (dtype = tf.float32).
     :return grad: Handle to the grad(...) function, which computes the gradient of the Error signal.
@@ -392,7 +391,7 @@ if __name__ == '__main__':
                 noisy_fft = fft(noisy_sig, NFFT)
 
                 if plot_data:
-                    plot_signal(fig, axs, t, sig_f, NFFT, clean_sig, noisy_sig, clean_fft, noisy_fft)
+                    plot_signal(axs, t, sig_f, NFFT, clean_sig, noisy_sig, clean_fft, noisy_fft)
                     plt.show()
                     plt.pause(1)
                     axs[0, 0].clear()
@@ -415,7 +414,10 @@ if __name__ == '__main__':
     print(input_tensor)
     output_layer = DFT(input_shape=input_tensor.shape, array_directory=file_direct, verbose=True, name='dft_1')
     print(output_layer)
+    model = Model(input_tensor, output_layer)
+    model.summary()
 
+    print('Running generator...')
     for a, sample in enumerate(generator):
         if a == 10:
             break
