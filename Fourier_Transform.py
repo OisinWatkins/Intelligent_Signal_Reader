@@ -304,33 +304,47 @@ class FFT(layers.Layer):
         return config
 
 
+# noinspection PyBroadException
 class DFT(layers.Layer):
     """
     This layer is designed to initially perform a standard DFT. As the layer trains it will (hopefully) learn
     to keep noise out of the spectrum
     """
 
-    def __init__(self, input_shape, **kwargs):
+    def __init__(self, input_shape, array_directory: str = os.getcwd(), verbose: bool = False, **kwargs):
         super(DFT, self).__init__(**kwargs)
 
         num_samples = next_power_of_2(input_shape.as_list()[-1])
-        W = []
-        for i in range(num_samples):
-            row = []
-            for j in range(num_samples):
-                row.append(Wnp(N=num_samples, p=(i * j)))
-            W.append(row)
+        file_number = math.log2(num_samples)
+        try:
+            file_path = array_directory + 'TA_2^' + str(file_number) + '.csv'
+            W = []
+            with open(file_path, 'r') as f:
+                lis = [line.split(',') for line in f]
+                for row_idx, row in enumerate(lis):
+                    if row_idx % 2 == 0:
+                        W.append(
+                            [tf.convert_to_tensor(complex(lis[row_idx][col]), tf.complex64) for col in range(len(row))])
+
+        except Exception as e:
+            W = []
+            for i in range(num_samples):
+                row = []
+                for j in range(num_samples):
+                    row.append(Wnp(N=num_samples, p=(i * j)))
+                W.append(row)
 
         self.twiddle = tf.Variable(initial_value=tf.convert_to_tensor(W, dtype=tf.complex64), trainable=True,
                                    dtype=tf.complex64)
+        self.verbose = tf.Variable(initial_value=verbose, trainable=False, dtype=tf.bool)
 
     def call(self, inputs, **kwargs):
-        output_val = dft(inputs, self.twiddle, verbose=True)
+        output_val = dft(inputs, self.twiddle, verbose=self.verbose)
         return output_val
 
     def get_config(self):
         config = super(DFT, self).get_config()
-        config.update({'twiddle': self.twiddle})
+        config.update({'twiddle': self.twiddle, 'verbose': self.verbose})
         return config
 
 
@@ -392,12 +406,14 @@ if __name__ == '__main__':
             yield batch_samples, batch_targets
 
 
+    file_direct = 'C:\\Users\\owatkins\\OneDrive - Analog Devices, Inc\\Documents\\Project Folder\\Project 3\\Code\\' \
+                  'Python\\default_twiddle_arrays\\'
     signal_length = 2 ** 8
     generator = random_sine_generator(signal_length, batch_size=1, plot_data=True)
 
-    input_tensor = Input(shape=signal_length)
+    input_tensor = Input(shape=(signal_length,))
     print(input_tensor)
-    output_layer = DFT(input_shape=input_tensor.shape, name='dft_1')
+    output_layer = DFT(input_shape=input_tensor.shape, array_directory=file_direct, verbose=True, name='dft_1')
     print(output_layer)
 
     for a, sample in enumerate(generator):

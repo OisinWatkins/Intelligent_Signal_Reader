@@ -14,6 +14,6 @@ network achieved much accuracy, given that the input data is so far removed from
 
 ### Intelligent Fourier Transform:
 _Fourier_Transform.py_ contains the code involved in performing either a Discrete Fourier Transform (DFT) or a Fast 
-Fourier Transform (FFT) and the definitions of DFT1D and FFT1D layers which can be added to a network. These layers 
-contain "radius" and "angle" attributes which tune the respective algorithm relative to the application to which they 
-are applied. 
+Fourier Transform (FFT) and the definitions of DFT and FFT layers which can be added to a network. These layers
+contain very few attributes, the primary attribute being the "twiddle array", which is the active matrix used to 
+perform the transform. This matrix is trained over time. 
