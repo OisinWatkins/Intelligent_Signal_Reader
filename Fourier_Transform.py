@@ -177,10 +177,11 @@ def dft(inputs: tf.Tensor or list or np.ndarray, twiddle_array: tf.Tensor or lis
     """
     Performs DFT algorithm on the inputs.
 
-    :param inputs: Input Signal (Real or Complex data acceptable, function will cast to tf.complex64 regardless).
-    :param twiddle_array: Array of Twiddle Factors which is N x N in size.
+    :param inputs: Input Signal of shape: (batch_size x N) (Real or Complex data acceptable, function will cast to
+           tf.complex64 regardless).
+    :param twiddle_array: Array of Twiddle Factors which is (N x N) in size.
     :param verbose: Boolean value controlling whether or not the function prints notifications as it runs.
-    :param return_real:  Boolen value to determine whether or not to perform the tf.abs operation on the DFT output.
+    :param return_real:  Boolean value to determine whether or not to perform the tf.abs operation on the DFT output.
     :return y_output/y_prediction: Magnitude DFT of the Input Signal (dtype = tf.float32), or the actual DFT of the
             Input Signal (dtype = tf.complex64).
     :return grad: Handle to the grad(...) function, which computes the gradient of the Error signal.
@@ -274,7 +275,7 @@ def dft(inputs: tf.Tensor or list or np.ndarray, twiddle_array: tf.Tensor or lis
         # Therefore: dEdW = x * dEdy
         dEdW = tf.tensordot(tf.transpose(inputs), dEdy, name='dEdW')
 
-        return dEdx, dEdW
+        return dEdx, dEdW, None, None
 
     if return_real:
         return y_output, grad
@@ -417,8 +418,8 @@ if __name__ == '__main__':
 
     input_tensor = Input(shape=(signal_length,))
     output_layer = DFT(input_shape=input_tensor.shape, array_directory=file_direct, name='dft_1')
-    # model = Model(input_tensor, output_layer)
-    # model.summary()
+    model = Model(input_tensor, output_layer)
+    model.summary()
 
     print('Running generator...\n')
     for a, sample in enumerate(generator):
