@@ -1,9 +1,6 @@
 """
 Author: Oisín Watkins
-Email: oisin.watkins@analog.com
-
-Disclaimer: This script, and all scripts written in support of it, are property of Analog Devices International and its
-subsidiaries.
+Email: oisinwatkins97@gmail.com
 """
 
 import os
