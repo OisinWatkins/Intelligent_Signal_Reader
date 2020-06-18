@@ -175,14 +175,17 @@ def fft_custom(inputs, tuning_radii=None, tuning_angles=None):
 
 
 @tf.custom_gradient
-def dft(inputs: tf.Tensor or list or np.ndarray, twiddle_array: tf.Tensor or list or np.ndarray = None, verbose: bool = False):
+def dft(inputs: tf.Tensor or list or np.ndarray, twiddle_array: tf.Tensor or list or np.ndarray = None,
+        verbose: bool = False, return_real: bool = True):
     """
     Performs DFT algorithm on the inputs.
 
     :param inputs: Input Signal (Real or Complex data acceptable, function will cast to tf.complex64 regardless).
     :param twiddle_array: Array of Twiddle Factors which is N x N in size.
     :param verbose: Boolean value controlling whether or not the function prints notifications as it runs.
-    :return y_output: Magnitude DFT of the Input Signal (dtype = tf.float32).
+    :param return_real:  Boolen value to determine whether or not to perform the tf.abs operation on the DFT output.
+    :return y_output/y_prediction: Magnitude DFT of the Input Signal (dtype = tf.float32), or the actual DFT of the
+            Input Signal (dtype = tf.complex64).
     :return grad: Handle to the grad(...) function, which computes the gradient of the Error signal.
     """
 
@@ -276,7 +279,10 @@ def dft(inputs: tf.Tensor or list or np.ndarray, twiddle_array: tf.Tensor or lis
 
         return dEdx, dEdW
 
-    return y_output, grad
+    if return_real:
+        return y_output, grad
+    else:
+        return y_prediction, grad
 
 
 class FFT(layers.Layer):
@@ -310,7 +316,8 @@ class DFT(layers.Layer):
     to keep noise out of the spectrum
     """
 
-    def __init__(self, input_shape, array_directory: str = os.getcwd(), verbose: bool = False, **kwargs):
+    def __init__(self, input_shape, array_directory: str = os.getcwd(), verbose: bool = False, return_real: bool = True,
+                 **kwargs):
         super(DFT, self).__init__(**kwargs)
 
         num_samples = next_power_of_2(input_shape.as_list()[-1])
@@ -336,14 +343,15 @@ class DFT(layers.Layer):
         self.twiddle = tf.Variable(initial_value=tf.convert_to_tensor(W, dtype=tf.complex64), trainable=True,
                                    dtype=tf.complex64)
         self.verbose = tf.Variable(initial_value=verbose, trainable=False, dtype=tf.bool)
+        self.return_real = tf.Variable(initial_value=return_real, trainable=False, dtype=tf.bool)
 
     def call(self, inputs, **kwargs):
-        output_val = dft(inputs, self.twiddle, verbose=self.verbose)
+        output_val = dft(inputs, self.twiddle, verbose=self.verbose, return_real=self.return_real)
         return output_val
 
     def get_config(self):
         config = super(DFT, self).get_config()
-        config.update({'twiddle': self.twiddle, 'verbose': self.verbose})
+        config.update({'twiddle': self.twiddle, 'verbose': self.verbose, 'return_real': self.return_real})
         return config
 
 
@@ -358,8 +366,8 @@ if __name__ == '__main__':
             'weight': 'bold',
             'size': 5}
     rc('font', **font)
-    # tf.compat.v1.enable_eager_execution()
-    # tfe = tf.contrib.eager
+    tf.compat.v1.enable_eager_execution()
+    tfe = tf.contrib.eager
 
     def random_sine_generator(sig_len: int, batch_size: int = 1, plot_data: bool = False):
         fig, axs = plt.subplots(2, 2)
@@ -411,17 +419,18 @@ if __name__ == '__main__':
     generator = random_sine_generator(signal_length, batch_size=1, plot_data=True)
 
     input_tensor = Input(shape=(signal_length,))
-    print(input_tensor)
-    output_layer = DFT(input_shape=input_tensor.shape, array_directory=file_direct, verbose=True, name='dft_1')
-    print(output_layer)
-    model = Model(input_tensor, output_layer)
-    model.summary()
+    output_layer = DFT(input_shape=input_tensor.shape, array_directory=file_direct, name='dft_1')
+    # model = Model(input_tensor, output_layer)
+    # model.summary()
 
-    print('Running generator...')
+    print('Running generator...\n')
     for a, sample in enumerate(generator):
         if a == 10:
             break
-        print(a)
+        print(f"Iteration #: {a}")
+        dft_val = output_layer(sample[0])
+        diff = sample[1] - dft_val
+        print(f"Max difference between Generated FFT and layer's output: {np.max(diff)}\n")
 
     # magnitude, truth = dft(inputs=[1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0], verbose=True)
     # output_fft = fft(inputs=[1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0])
