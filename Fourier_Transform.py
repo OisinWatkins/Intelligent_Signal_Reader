@@ -6,11 +6,12 @@ Email: oisinwatkins97@gmail.com
 import os
 import csv
 import math
-import tensorflow as tf
 import numpy as np
-from matplotlib import rc, pyplot as plt
+import tensorflow as tf
 from scipy.fftpack import fft
+from matplotlib import rc, pyplot as plt
 from tensorflow.keras import layers, Model, losses, Input
+# tf.config.experimental_run_functions_eagerly(True)
 
 
 def generate_twiddle_arrays(directory: str = os.getcwd(), lowest_power_of_2: int = 1, highest_power_of_2: int = 1):
@@ -24,25 +25,22 @@ def generate_twiddle_arrays(directory: str = os.getcwd(), lowest_power_of_2: int
     :param highest_power_of_2: The highest power of 2 needed for generation.
     :return: None
     """
-    tf.compat.v1.enable_eager_execution()
-    tfe = tf.contrib.eager
-    sess = tf.Session()
+    print(tf.executing_eagerly())
     print(f'Saving Twiddle Arrays to: {directory}...')
-    with sess.as_default():
-        for power in range(lowest_power_of_2, highest_power_of_2 + 1):
-            num_samples = 2 ** power
-            W = []
-            for i in range(num_samples):
-                row = []
-                for j in range(num_samples):
-                    row.append(Wnp(N=num_samples, p=(i * j)).numpy())
-                W.append(row)
-            file_dir = directory + '\\' + 'TA_2^' + str(power) + '.csv'
-            print(f'Now Saving: {file_dir}')
-            # tf.io.write_file(filename=file_dir, contents=W)
-            with open(file_dir, 'w+') as f:
-                csvWriter = csv.writer(f, delimiter=',')
-                csvWriter.writerows(W)
+    for power in range(lowest_power_of_2, highest_power_of_2 + 1):
+        num_samples = 2 ** power
+        W = []
+        for i in range(num_samples):
+            row = []
+            for j in range(num_samples):
+                row.append(Wnp(N=num_samples, p=(i * j)).numpy())
+            W.append(row)
+        file_dir = directory + '\\' + 'TA_2^' + str(power) + '.csv'
+        print(f'Now Saving: {file_dir}')
+        # tf.io.write_file(filename=file_dir, contents=W)
+        with open(file_dir, 'w+') as f:
+            csvWriter = csv.writer(f, delimiter=',')
+            csvWriter.writerows(W)
     print('Saving Complete')
 
 
@@ -183,7 +181,7 @@ def dft(inputs: tf.Tensor or list or np.ndarray, twiddle_array: tf.Tensor or lis
     :param verbose: Boolean value controlling whether or not the function prints notifications as it runs.
     :param return_real:  Boolean value to determine whether or not to perform the tf.abs operation on the DFT output.
     :return y_output/y_prediction: Magnitude DFT of the Input Signal (dtype = tf.float32), or the actual DFT of the
-            Input Signal (dtype = tf.complex64).
+            Input Signal (dtype = tf.complex64), respectively.
     :return grad: Handle to the grad(...) function, which computes the gradient of the Error signal.
     """
 
@@ -239,17 +237,6 @@ def dft(inputs: tf.Tensor or list or np.ndarray, twiddle_array: tf.Tensor or lis
     assert inputs.shape.as_list()[-1] == twiddle_array.shape.as_list()[0] and \
         inputs.shape.as_list()[-1] == twiddle_array.shape.as_list()[1], \
         'Input tensor and Twiddle Array do not have compatible shapes'
-
-    # return = | twiddle_array . inputs |
-    # The current issue is somewhere here. The maths is sound, however TF has issues doing computations when the
-    # dimensions of the input tensor are unknown. Inputs currently has shape (?, 16), correct size but should be (16,),
-    # I think
-    # print(inputs.shape)
-    # input_shape = inputs.shape.as_list()
-    # if input_shape[0] is None:
-    #     inputs = tf.reshape(inputs, (1, input_shape[1]))
-    #
-    # print(inputs.shape)
 
     if verbose:
         print('Computing DFT')
@@ -340,8 +327,8 @@ class DFT(layers.Layer):
 
         self.twiddle = tf.Variable(initial_value=tf.convert_to_tensor(W, dtype=tf.complex64), trainable=True,
                                    dtype=tf.complex64)
-        self.verbose = tf.Variable(initial_value=verbose, trainable=False, dtype=tf.bool)
-        self.return_real = tf.Variable(initial_value=return_real, trainable=False, dtype=tf.bool)
+        self.verbose = verbose
+        self.return_real = return_real
 
     def call(self, inputs, **kwargs):
         output_val = dft(inputs, self.twiddle, verbose=self.verbose, return_real=self.return_real)
@@ -364,8 +351,6 @@ if __name__ == '__main__':
             'weight': 'bold',
             'size': 5}
     rc('font', **font)
-    tf.compat.v1.enable_eager_execution()
-    tfe = tf.contrib.eager
 
     def random_sine_generator(sig_len: int, batch_size: int = 1, plot_data: bool = False):
         fig, axs = plt.subplots(2, 2)
@@ -415,10 +400,11 @@ if __name__ == '__main__':
                   'Python\\default_twiddle_arrays\\'
     signal_length = 2 ** 8
     generator = random_sine_generator(signal_length, batch_size=1, plot_data=True)
+    input_tensor = Input(shape=(1, signal_length))
+    output_layer = DFT(input_shape=input_tensor.shape, array_directory=file_direct, name='dft_1')(input_tensor)
 
-    input_tensor = Input(shape=(signal_length,))
-    output_layer = DFT(input_shape=input_tensor.shape, array_directory=file_direct, name='dft_1')
-    model = Model(input_tensor, output_layer)
+    model = Model(inputs=[input_tensor], outputs=[output_layer])
+    model.compile(optimizer='rmsprop', run_eagerly=True, loss='mae', metrics=['accuracy'])
     model.summary()
 
     print('Running generator...\n')
@@ -426,9 +412,9 @@ if __name__ == '__main__':
         if a == 10:
             break
         print(f"Iteration #: {a}")
-        dft_val = output_layer(sample[0])
-        diff = sample[1] - dft_val
-        print(f"Max difference between Generated FFT and layer's output: {np.max(diff)}\n")
+        # dft_val = output_layer(sample[0])
+        # diff = sample[1] - dft_val
+        # print(f"Max difference between Generated FFT and layer's output: {np.max(diff)}\n")
 
     # magnitude, truth = dft(inputs=[1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0], verbose=True)
     # output_fft = fft(inputs=[1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0])
