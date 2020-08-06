@@ -4,7 +4,7 @@ clear
 % Set the signal length to be constant and load the corresponding Twiddle
 % Array file.
 signal_length = 2^12;
-load('C:\Users\owatkins\OneDrive - Analog Devices, Inc\Documents\Project Folder\Project 3\Code\Python\MATLAB_Scripts\default_twiddle_arrays\TA_2^12.mat');
+load('C:\Users\owatkins\OneDrive - Analog Devices, Inc\Documents\Project Folder\Project 3\Code\default_twiddle_arrays_MATLAB\TA_2^12.mat');
 
 % Copy the Twiddle Array into a new variable. This new variable is the one 
 % which will be trained.
@@ -17,7 +17,7 @@ cntr = 0;
 while true
     % Set the frequency of the signal and the sampling frequency to be at
     % least twice the frequency.
-    Frequency = 10000000 + 10000000*rand(1);
+    Frequency = 10000000;% + 10000000*rand(1);
     Fs = 50000000;
 
     % Define both the clean and the noisy profiles to apply to the
@@ -53,7 +53,7 @@ while true
     
     complexity_score = (W - W_alt).^2;
     
-    LR = sqrt(sqrt(sqrt(sum(abs(delta)))));
+    LR = 10 * mean(abs(delta)) / max(abs(delta));
     
     % L2 = ;
     
@@ -68,6 +68,6 @@ while true
         cntr = -1;
     end
     cntr = cntr + 1;
-    clc    
+%     clc    
 end
 clc
