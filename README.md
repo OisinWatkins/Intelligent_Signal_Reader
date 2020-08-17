@@ -7,13 +7,13 @@ _Generator.py_ was the first file written. This file contains 3 generator defini
 generated using the RADAR simulator developed in MATLAB and stored on GIT at: 
 https://github.com/OisinWatkins/MATLAB_RADAR_Simulator
 
-### Simple Networks:
-_Simple_Dense_Network.py_, _Conv_Network.py_, _Highway_Network.py_, _Divergent_Network.py_ and _Neural_Net_Theano.py_ 
-are all experiments in viewing the typical network layouts' responses to complex RADAR data. As expected, no 
-network achieved much accuracy, given that the input data is so far removed from the output data.
-
 ### Intelligent Fourier Transform:
 _Fourier_Transform.py_ contains the code involved in performing either a Discrete Fourier Transform (DFT) or a Fast 
 Fourier Transform (FFT) and the definitions of DFT and FFT layers which can be added to a network. These layers
 contain very few attributes, the primary attribute being the "twiddle array", which is the active matrix used to 
 perform the transform. This matrix is trained over time. 
+
+### Intelligent DFT mlapp:
+_Intelligent DFT.mlapp_ is a MATLAB application which is used to demo this idea and provide both a proof of concept and
+an active demonstration of this algorithm being used in a Radio reciever. Nothing in this file is meant to be exported to
+any final application, it is only a platform to play with training settings and get a feel for how the system behaves.
