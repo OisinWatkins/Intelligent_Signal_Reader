@@ -199,14 +199,15 @@ def dft(inputs: tf.Tensor or list or np.ndarray, twiddle_array: tf.Tensor or lis
         inputs = tf.cast(inputs, tf.complex64)
 
     N = inputs.shape.as_list()[-1]
-    if N is not None:
-        # Checking input length
-        if not math.log2(N).is_integer():
-            # --Changing input length
-            if verbose:
-                print('Changing input length')
-            num_zeros_to_add = next_power_of_2(N) - N
-            inputs = tf.concat([inputs, tf.zeros(num_zeros_to_add, dtype=tf.complex64)])
+    assert N is not None 'Signal Length has been read as None'
+
+    # Checking input length
+    if not math.log2(N).is_integer():
+        # --Changing input length
+        if verbose:
+            print('Changing input length')
+        num_zeros_to_add = next_power_of_2(N) - N
+        inputs = tf.concat([inputs, tf.zeros(num_zeros_to_add, dtype=tf.complex64)])
 
     # Checking twiddle_array for validity
     if twiddle_array is None:
@@ -234,8 +235,7 @@ def dft(inputs: tf.Tensor or list or np.ndarray, twiddle_array: tf.Tensor or lis
             print('Changing twiddle array to complex64')
         twiddle_array = tf.cast(twiddle_array, dtype=tf.complex64)
 
-    assert inputs.shape.as_list()[-1] == twiddle_array.shape.as_list()[0] and \
-        inputs.shape.as_list()[-1] == twiddle_array.shape.as_list()[1], \
+    assert N == twiddle_array.shape.as_list()[0] and N == twiddle_array.shape.as_list()[1], \
         'Input tensor and Twiddle Array do not have compatible shapes'
 
     if verbose:
@@ -255,7 +255,7 @@ def dft(inputs: tf.Tensor or list or np.ndarray, twiddle_array: tf.Tensor or lis
         # dEdx = dydx * dEdy
         # dydx = W
         # Therefore: dEdx = W * dEdy
-        dEdx = tf.tensordot(dEdy, twiddle_array, name='dEdx')
+        dEdx = tf.tensordot(twiddle_array, tf.transpose(dEdy), name='dEdx')
 
         # dEdW = dydW * dEdy
         # dydW = x
@@ -272,8 +272,7 @@ def dft(inputs: tf.Tensor or list or np.ndarray, twiddle_array: tf.Tensor or lis
 
 class FFT(layers.Layer):
     """
-    This layer is designed to initially perform a standard FFT. As the layer trains it will (hopefully) learn
-    to keep noise out of the spectrum
+    This layer is designed to initially perform a standard FFT.
     """
 
     def __init__(self, input_shape, **kwargs):
@@ -297,33 +296,22 @@ class FFT(layers.Layer):
 # noinspection PyBroadException
 class DFT(layers.Layer):
     """
-    This layer is designed to initially perform a standard DFT. As the layer trains it will (hopefully) learn
-    to keep noise out of the spectrum
+    This layer is designed to initially perform a standard DFT.
     """
 
-    def __init__(self, input_shape, array_directory: str = os.getcwd(), verbose: bool = False, return_real: bool = True,
+    def __init__(self, input_shape: list or tuple, verbose: bool = False, return_real: bool = True,
                  **kwargs):
         super(DFT, self).__init__(**kwargs)
 
         num_samples = next_power_of_2(input_shape.as_list()[-1])
         file_number = math.log2(num_samples)
-        try:
-            file_path = array_directory + 'TA_2^' + str(file_number) + '.csv'
-            W = []
-            with open(file_path, 'r') as f:
-                lis = [line.split(',') for line in f]
-                for row_idx, row in enumerate(lis):
-                    if row_idx % 2 == 0:
-                        W.append(
-                            [tf.convert_to_tensor(complex(lis[row_idx][col]), tf.complex64) for col in range(len(row))])
 
-        except Exception as e:
-            W = []
-            for i in range(num_samples):
-                row = []
-                for j in range(num_samples):
-                    row.append(Wnp(N=num_samples, p=(i * j)))
-                W.append(row)
+        W = []
+        for i in range(num_samples):
+            row = []
+            for j in range(num_samples):
+                row.append(Wnp(N=num_samples, p=(i * j)))
+            W.append(row)
 
         self.twiddle = tf.Variable(initial_value=tf.convert_to_tensor(W, dtype=tf.complex64), trainable=True,
                                    dtype=tf.complex64)
@@ -396,12 +384,10 @@ if __name__ == '__main__':
             yield batch_samples, batch_targets
 
 
-    file_direct = 'C:\\Users\\owatkins\\OneDrive - Analog Devices, Inc\\Documents\\Project Folder\\Project 3\\Code\\' \
-                  'Python\\default_twiddle_arrays\\'
     signal_length = 2 ** 8
     generator = random_sine_generator(signal_length, batch_size=1, plot_data=True)
     input_tensor = Input(shape=(1, signal_length))
-    output_layer = DFT(input_shape=input_tensor.shape, array_directory=file_direct, name='dft_1')(input_tensor)
+    output_layer = DFT(input_shape=input_tensor.shape, name='dft_1')(input_tensor)
 
     model = Model(inputs=[input_tensor], outputs=[output_layer])
     model.compile(optimizer='rmsprop', run_eagerly=True, loss='mae', metrics=['accuracy'])
