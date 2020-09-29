@@ -10,7 +10,17 @@ import numpy as np
 import tensorflow as tf
 from scipy.fftpack import fft
 from matplotlib import rc, pyplot as plt
-from tensorflow.keras import layers, Model, losses, Input
+from tensorflow.keras import layers
+from tensorflow.keras import Model
+from tensorflow.keras import Input
+from tensorflow.keras import losses
+from tensorflow.keras import Sequential
+from tensorflow.python.keras import backend as K
+from tensorflow.python.keras import constraints
+from tensorflow.python.keras import initializers
+from tensorflow.python.keras import regularizers
+
+
 # tf.config.experimental_run_functions_eagerly(True)
 
 
@@ -99,9 +109,9 @@ def sine_wave(f, overSampRate, phase, nCyl):
     :param nCyl : number of cycles of sine wave to generate
     :return (t,g) : time base (t) and the signal g(t) as tuple
     """
-    fs = overSampRate*f  # sampling frequency
-    t = np.arange(0, nCyl*1/f-1/fs, 1/fs)  # time base
-    g = np.sin(2*np.pi*f*t+phase)  # replace with cos if a cosine wave is desired
+    fs = overSampRate * f  # sampling frequency
+    t = np.arange(0, nCyl * 1 / f - 1 / fs, 1 / fs)  # time base
+    g = np.sin(2 * np.pi * f * t + phase)  # replace with cos if a cosine wave is desired
     return t, g  # return time base and signal g(t) as tuple
 
 
@@ -148,6 +158,7 @@ def fft_custom(inputs, tuning_radii=None, tuning_angles=None):
         if N <= 1:
             def grad():
                 return 0, 0, 0
+
             return inputs, grad
         if not math.log2(N).is_integer():
             num_zeros_to_add = next_power_of_2(N) - N
@@ -162,10 +173,12 @@ def fft_custom(inputs, tuning_radii=None, tuning_angles=None):
         def grad():
             return 0, 1, 1
 
-        return tf.abs([tf.add(tf.cast(even[k], dtype=tf.complex64), T[k]) for k in range(N // 2)] + [tf.subtract(tf.cast(even[k], dtype=tf.complex64), T[k]) for k in range(N // 2)], name='fft_calc'), grad
+        return tf.abs([tf.add(tf.cast(even[k], dtype=tf.complex64), T[k]) for k in range(N // 2)] + [
+            tf.subtract(tf.cast(even[k], dtype=tf.complex64), T[k]) for k in range(N // 2)], name='fft_calc'), grad
     else:
         def grad():
             return 0, 0, 0
+
         return tf.convert_to_tensor([0], dtype=tf.complex64), grad
 
 
@@ -199,7 +212,7 @@ def dft(inputs: tf.Tensor or list or np.ndarray, twiddle_array: tf.Tensor or lis
         inputs = tf.cast(inputs, tf.complex64)
 
     N = inputs.shape.as_list()[-1]
-    assert N is not None 'Signal Length has been read as None'
+    assert N is not None, 'Signal Length has been read as None'
 
     # Checking input length
     if not math.log2(N).is_integer():
@@ -296,35 +309,92 @@ class FFT(layers.Layer):
 # noinspection PyBroadException
 class DFT(layers.Layer):
     """
-    This layer is designed to initially perform a standard DFT.
+    This layer implements a DFT on the input signal.
+
+    output = input * twiddle
+
+    where `input` is the input signal of length N and and `twiddle` is a matrix created
+    by the layer of size N x N. Each index in `twiddle` is a Twiddle Factor
+    (dtype: tf.complex64) needed to perform the DFT, and is generated using the
+    Wnp function defined in this file. The output of this layer is computed using the
+    tf.tensordot(...) function.
+
+    Arguments:
+        num_samples: Number of samples in the input signal.
+
+        kernel_regularizer: Regulariser function applied to
+            the `twiddle` weights matrix.
+
+        kernel_constraint: Constraint function applied to
+            the `twiddle` weights matrix.
+
+    Input shape:
+        N-D tensor with shape: `(batch_size, num_samples)`.
+        The most common situation would be
+        a 1D input with shape `(1, num_samples)`.
+
+    Output shape:
+        N-D tensor with shape: `(batch_size, num_samples)`.
     """
 
-    def __init__(self, input_shape: list or tuple, verbose: bool = False, return_real: bool = True,
-                 **kwargs):
+    def __init__(self, num_samples: int = 1, kernel_regularizer=None, kernel_constraint=None, **kwargs):
         super(DFT, self).__init__(**kwargs)
 
-        num_samples = next_power_of_2(input_shape.as_list()[-1])
-        file_number = math.log2(num_samples)
+        if (num_samples is None) or not (num_samples > 0):
+            raise ValueError('The dimension of the inputs to `DFT` should be defined. Found `None` or `0`.')
+        self.dimension = next_power_of_2(num_samples)
 
         W = []
-        for i in range(num_samples):
+        for i in range(self.dimension):
             row = []
-            for j in range(num_samples):
-                row.append(Wnp(N=num_samples, p=(i * j)))
+            for j in range(self.dimension):
+                row.append(Wnp(N=self.dimension, p=(i * j)))
             W.append(row)
 
         self.twiddle = tf.Variable(initial_value=tf.convert_to_tensor(W, dtype=tf.complex64), trainable=True,
                                    dtype=tf.complex64)
-        self.verbose = verbose
-        self.return_real = return_real
+        self.kernel_regularizer = regularizers.get(kernel_regularizer)
+        self.kernel_constraint = constraints.get(kernel_constraint)
+        self.built = True
+
+    #  def build(self, **kwargs):
 
     def call(self, inputs, **kwargs):
-        output_val = dft(inputs, self.twiddle, verbose=self.verbose, return_real=self.return_real)
+        # Checking inputs for validity
+        if not tf.is_tensor(inputs):
+            # --Changing input to tensor
+            inputs = tf.convert_to_tensor(inputs, dtype=tf.complex64)
+
+        if not (inputs.dtype == tf.complex64):
+            # --Changing input to complex64
+            inputs = tf.cast(inputs, tf.complex64)
+
+        N = inputs.shape.as_list()[-1]
+        assert N is not None, 'Signal Length has been read as None'
+        # Checking input length
+        if not math.log2(N).is_integer():
+            # --Changing input length
+            num_zeros_to_add = next_power_of_2(N) - N
+            inputs = tf.concat([inputs, tf.zeros(num_zeros_to_add, dtype=tf.complex64)])
+
+        if not (N == self.twiddle.shape.as_list()[0] and N == self.twiddle.shape.as_list()[1]):
+            print(f"Input tensor and Twiddle Array do not have compatible shapes\nInput Tensor shape: "
+                  f"{inputs.shape.as_list()}\nTwiddle Array Shape: {self.twiddle.shape.as_list()}")
+            raise ValueError("Input shape is invalid and/or Twiddle array shape is invalid")
+
+        output_val = tf.tensordot(inputs, self.twiddle, axes=1, name='dft_calc')
         return output_val
+
+    def compute_output_shape(self, input_shape):
+        return input_shape
 
     def get_config(self):
         config = super(DFT, self).get_config()
-        config.update({'twiddle': self.twiddle, 'verbose': self.verbose, 'return_real': self.return_real})
+
+        config.update({'twiddle': self.twiddle,
+                       'kernel_regularizer': self.kernel_regularizer,
+                       'kernel_constraint': self.kernel_constraint
+                       })
         return config
 
 
@@ -340,6 +410,7 @@ if __name__ == '__main__':
             'size': 5}
     rc('font', **font)
 
+
     def random_sine_generator(sig_len: int, batch_size: int = 1, plot_data: bool = False):
         fig, axs = plt.subplots(2, 2)
         plt.ion()
@@ -350,7 +421,7 @@ if __name__ == '__main__':
                 OSR = 10 * np.random.rand()
                 num_cycles = (sig_len + 1) / OSR
                 sig_f = 10000000 * np.random.rand()
-                sig_phase = (-2*np.pi) + (4*np.pi) * np.random.rand()
+                sig_phase = (-2 * np.pi) + (4 * np.pi) * np.random.rand()
                 NFFT = sig_len
 
                 t, clean_sig = sine_wave(f=sig_f, overSampRate=OSR, phase=sig_phase, nCyl=num_cycles)
@@ -379,40 +450,28 @@ if __name__ == '__main__':
                     axs[1, 1].clear()
 
                 batch_samples[i, :] = noisy_sig
-                batch_targets[i, :] = np.abs(clean_fft)
+                batch_targets[i, :] = noisy_fft
 
             yield batch_samples, batch_targets
 
 
     signal_length = 2 ** 8
     generator = random_sine_generator(signal_length, batch_size=1, plot_data=True)
-    input_tensor = Input(shape=(1, signal_length))
-    output_layer = DFT(input_shape=input_tensor.shape, name='dft_1')(input_tensor)
 
-    model = Model(inputs=[input_tensor], outputs=[output_layer])
-    model.compile(optimizer='rmsprop', run_eagerly=True, loss='mae', metrics=['accuracy'])
+    model = Sequential()
+    model.add(layers.Input(shape=(signal_length)))
+    model.add(DFT(num_samples=signal_length, name='dft_1'))
+    model.compile(optimizer='rmsprop', loss='mae', metrics=['accuracy'])
     model.summary()
 
-    print('Running generator...\n')
+    print('\nRunning generator...')
     for a, sample in enumerate(generator):
         if a == 10:
             break
-        print(f"Iteration #: {a}")
-        # dft_val = output_layer(sample[0])
-        # diff = sample[1] - dft_val
-        # print(f"Max difference between Generated FFT and layer's output: {np.max(diff)}\n")
+        print(f"\nIteration #: {a}")
+        dft_prediction = model.predict(x=sample[0])
+        error = dft_prediction[0] - sample[1]
+        print(f"DFT Prediction : {dft_prediction}")
+        print(f"Error : {error}")
 
-    # magnitude, truth = dft(inputs=[1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0], verbose=True)
-    # output_fft = fft(inputs=[1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0])
-
-    # input_tensor = Input(shape=(1, signal_length))
-    # output_layer = DFT(input_shape=input_tensor.shape, name='dft_1')
-    # output = output_layer(input_tensor)
-    # model = Model(input_tensor, output)
-    #
-    # model.compile(loss=losses.mean_squared_error, optimizer='sgd')
-    # model.summary()
-    #
-    # history = model.fit(x=generator, steps_per_epoch=10, epochs=5, validation_data=generator, validation_steps=10,
-    #                     verbose=True)
-    # print(history)
+    input("\n\nPress Enter to finish...")
