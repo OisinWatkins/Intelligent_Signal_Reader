@@ -340,7 +340,11 @@ class DFT(layers.Layer):
             inputs = tf.cast(inputs, tf.complex64)
 
         N = inputs.shape.as_list()[-1]
-        assert N is not None, 'Signal Length has been read as None'
+        if N is None:
+            print('Signal Length has been read as None')
+            N = self.dimension
+            print(f"N changed to {N}")
+        
         # Checking input length
         if not math.log2(N).is_integer():
             # --Changing input length
@@ -433,32 +437,20 @@ if __name__ == '__main__':
     model.add(DFT(num_samples=signal_length, name='dft_1'))
     model.compile(optimizer='rmsprop', loss='mae', metrics=['accuracy'])
     model.summary()
+    
+    model.fit(x=generator, epochs=10, steps_per_epoch=100, verbose=2)
 
-    print('\nRunning generator...')
-    fig_2, axs_2 = plt.subplots(2, 2)
-    plt.ion()
-    for a, sample in enumerate(generator):
-        print(f"\nIteration #: {a}")
-        dft_prediction = model.predict(x=sample[0])
-        print(f"Sample Shape: {np.shape(sample)}")
-        print(f"Input Signal Shape: {np.shape(sample[0])}")
-        print(f"FFT Output shape: {np.shape(sample[1])}")
-        print(f"DFT Layer output shape: {np.shape(dft_prediction)}")
+    # print('\nRunning generator...')
+    # for a, sample in enumerate(generator):
+        # print(f"\nIteration #: {a}")
+        # print(f"Sample Shape: {np.shape(sample)}")
+        # print(f"Input Signal Shape: {np.shape(sample[0])}")
+        # print(f"FFT Output shape: {np.shape(sample[1])}")
         
-        plot_signal(axs_2, None, None, signal_length, None, None, sample[1].reshape(256,), dft_prediction.reshape(256,))
-        plt.show()
-        plt.pause(1)
+        # dft_prediction = model.predict(x=sample[0])
+        # print(f"DFT Layer output shape: {np.shape(dft_prediction)}")
         
-        if a == 10:
-            break
-            
-        axs_2[0, 0].clear()
-        axs_2[0, 1].clear()
-        axs_2[1, 0].clear()
-        axs_2[1, 1].clear()
+        # if a == 9:
+           # break
 
     input("\n\nPress Enter to finish...")
-    axs_2[0, 0].clear()
-    axs_2[0, 1].clear()
-    axs_2[1, 0].clear()
-    axs_2[1, 1].clear()
