@@ -15,6 +15,7 @@ from tensorflow.keras import Model
 from tensorflow.keras import Input
 from tensorflow.keras import losses
 from tensorflow.keras import Sequential
+from tensorflow.keras import optimizers
 from tensorflow.python.keras import backend as K
 from tensorflow.python.keras import constraints
 from tensorflow.python.keras import initializers
@@ -424,22 +425,61 @@ if __name__ == '__main__':
                     axs_1[1, 1].clear()
 
                 batch_samples[i, :] = noisy_sig
-                batch_targets[i, :] = noisy_fft
+                batch_targets[i, :] = clean_fft
 
             yield batch_samples, batch_targets
 
 
     signal_length = 2 ** 8
     generator = random_sine_generator(signal_length, batch_size=1, plot_data=False)
+    
+    # Instantiate an optimizer.
+    dft_optimizer = optimizers.RMSprop(learning_rate=1e-6)
 
     model = Sequential()
     model.add(layers.Input(shape=(signal_length)))
     model.add(DFT(num_samples=signal_length, name='dft_1'))
-    model.compile(optimizer='rmsprop', loss='mae')
+    model.compile(optimizer=dft_optimizer, loss='mae')
     model.summary()
-    print("\n")
     
-    model.fit(x=generator, epochs=10, steps_per_epoch=100, verbose=2)
+    print("\n")
+        
+    epochs = 10
+    steps_per_epoch = 1000
+    
+    model.fit(x=generator, epochs=epochs, steps_per_epoch=steps_per_epoch, verbose=2)
+    
+    # for epoch in range(epochs):
+        # print(f"\nStart of epoch {epoch}")
+
+        # # Iterate over the presentations of the dataset.
+        # for step, (sig_input, freq_output) in enumerate(generator):
+
+            # # Open a GradientTape to record the operations run
+            # # during the forward pass, which enables auto-differentiation.
+            # with tf.GradientTape() as tape:
+
+                # # Run the forward pass of the layer.
+                # # The operations that the layer applies
+                # # to its inputs are going to be recorded
+                # # on the GradientTape.
+                # dft_layer_output = model(sig_input, training=True)  # DFT layer output
+
+                # # Compute the loss value for this presentation
+                # loss_value = losses.mean_absolute_error(freq_output, dft_layer_output)
+
+            # # Use the gradient tape to automatically retrieve
+            # # the gradients of the trainable variables with respect to the loss.
+            # grads = tape.gradient(loss_value, model.trainable_weights)
+
+            # # Run one step of gradient descent by updating
+            # # the value of the variables to minimize the loss.
+            # dft_optimizer.apply_gradients(zip(grads, model.trainable_weights))
+
+            # # Log every 200 batches.
+            # if step % 200 == 0:
+                # print(f"Training loss (for one batch) at step {step} {float(loss_value)}")
+                # print(f"Seen so far: {(step + 1) * 64} samples")
 
     # print('\nRunning generator...')
     # for a, sample in enumerate(generator):
