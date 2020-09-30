@@ -435,8 +435,9 @@ if __name__ == '__main__':
     model = Sequential()
     model.add(layers.Input(shape=(signal_length)))
     model.add(DFT(num_samples=signal_length, name='dft_1'))
-    model.compile(optimizer='rmsprop', loss='mae', metrics=['accuracy'])
+    model.compile(optimizer='rmsprop', loss='mae')
     model.summary()
+    print("\n")
     
     model.fit(x=generator, epochs=10, steps_per_epoch=100, verbose=2)
 
