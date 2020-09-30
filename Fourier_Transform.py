@@ -24,36 +24,6 @@ from tensorflow.python.keras import regularizers
 # tf.config.experimental_run_functions_eagerly(True)
 
 
-def generate_twiddle_arrays(directory: str = os.getcwd(), lowest_power_of_2: int = 1, highest_power_of_2: int = 1):
-    """
-    Function generates csv files to contain the twiddle arrays for later use, makes creating objects of DFT layer faster
-    generate_twiddle_arrays(directory='C:\\Users\\owatkins\\OneDrive - Analog Devices, Inc\\Documents\\Project Folder\\
-    Project 3\\Code\\Python\\Default Twiddle Arrays', highest_power_of_2=3)
-
-    :param directory: Folder to store twiddle array csv's in
-    :param lowest_power_of_2: The lowest power of 2 needed for generation.
-    :param highest_power_of_2: The highest power of 2 needed for generation.
-    :return: None
-    """
-    print(tf.executing_eagerly())
-    print(f'Saving Twiddle Arrays to: {directory}...')
-    for power in range(lowest_power_of_2, highest_power_of_2 + 1):
-        num_samples = 2 ** power
-        W = []
-        for i in range(num_samples):
-            row = []
-            for j in range(num_samples):
-                row.append(Wnp(N=num_samples, p=(i * j)).numpy())
-            W.append(row)
-        file_dir = directory + '\\' + 'TA_2^' + str(power) + '.csv'
-        print(f'Now Saving: {file_dir}')
-        # tf.io.write_file(filename=file_dir, contents=W)
-        with open(file_dir, 'w+') as f:
-            csvWriter = csv.writer(f, delimiter=',')
-            csvWriter.writerows(W)
-    print('Saving Complete')
-
-
 def plot_signal(axs, time_stamp, sig_freq, NFFT, clean_sig=None, noisy_sig=None, clean_fft=None, noisy_fft=None):
     """
     This function plots a clean and a noisy signla with the respective ffts in a single window for comparison.
@@ -412,11 +382,11 @@ if __name__ == '__main__':
 
 
     def random_sine_generator(sig_len: int, batch_size: int = 1, plot_data: bool = False):
-        fig, axs = plt.subplots(2, 2)
+        fig_1, axs_1 = plt.subplots(2, 2)
         plt.ion()
         while True:
-            batch_samples = np.zeros(shape=(batch_size, sig_len))
-            batch_targets = np.zeros(shape=(batch_size, sig_len))
+            batch_samples = np.zeros(shape=(batch_size, sig_len), dtype=np.float32)
+            batch_targets = np.zeros(shape=(batch_size, sig_len), dtype=np.complex64)
             for i in range(batch_size):
                 OSR = 10 * np.random.rand()
                 num_cycles = (sig_len + 1) / OSR
@@ -441,13 +411,13 @@ if __name__ == '__main__':
                 noisy_fft = fft(noisy_sig, NFFT)
 
                 if plot_data:
-                    plot_signal(axs, t, sig_f, NFFT, clean_sig, noisy_sig, clean_fft, noisy_fft)
+                    plot_signal(axs_1, t, sig_f, NFFT, clean_sig, noisy_sig, clean_fft, noisy_fft)
                     plt.show()
                     plt.pause(1)
-                    axs[0, 0].clear()
-                    axs[0, 1].clear()
-                    axs[1, 0].clear()
-                    axs[1, 1].clear()
+                    axs_1[0, 0].clear()
+                    axs_1[0, 1].clear()
+                    axs_1[1, 0].clear()
+                    axs_1[1, 1].clear()
 
                 batch_samples[i, :] = noisy_sig
                 batch_targets[i, :] = noisy_fft
@@ -456,7 +426,7 @@ if __name__ == '__main__':
 
 
     signal_length = 2 ** 8
-    generator = random_sine_generator(signal_length, batch_size=1, plot_data=True)
+    generator = random_sine_generator(signal_length, batch_size=1, plot_data=False)
 
     model = Sequential()
     model.add(layers.Input(shape=(signal_length)))
@@ -465,13 +435,30 @@ if __name__ == '__main__':
     model.summary()
 
     print('\nRunning generator...')
+    fig_2, axs_2 = plt.subplots(2, 2)
+    plt.ion()
     for a, sample in enumerate(generator):
-        if a == 10:
-            break
         print(f"\nIteration #: {a}")
         dft_prediction = model.predict(x=sample[0])
-        error = dft_prediction[0] - sample[1]
-        print(f"DFT Prediction : {dft_prediction}")
-        print(f"Error : {error}")
+        print(f"Sample Shape: {np.shape(sample)}")
+        print(f"Input Signal Shape: {np.shape(sample[0])}")
+        print(f"FFT Output shape: {np.shape(sample[1])}")
+        print(f"DFT Layer output shape: {np.shape(dft_prediction)}")
+        
+        plot_signal(axs_2, None, None, signal_length, None, None, sample[1].reshape(256,), dft_prediction.reshape(256,))
+        plt.show()
+        plt.pause(1)
+        
+        if a == 10:
+            break
+            
+        axs_2[0, 0].clear()
+        axs_2[0, 1].clear()
+        axs_2[1, 0].clear()
+        axs_2[1, 1].clear()
 
     input("\n\nPress Enter to finish...")
+    axs_2[0, 0].clear()
+    axs_2[0, 1].clear()
+    axs_2[1, 0].clear()
+    axs_2[1, 1].clear()
