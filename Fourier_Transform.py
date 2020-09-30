@@ -393,7 +393,7 @@ if __name__ == '__main__':
             batch_samples = np.zeros(shape=(batch_size, sig_len), dtype=np.float32)
             batch_targets = np.zeros(shape=(batch_size, sig_len), dtype=np.complex64)
             for i in range(batch_size):
-                OSR = 10 * np.random.rand()
+                OSR = 3
                 num_cycles = (sig_len + 1) / OSR
                 sig_f = 10000000 * np.random.rand()
                 sig_phase = (-2 * np.pi) + (4 * np.pi) * np.random.rand()
@@ -425,7 +425,7 @@ if __name__ == '__main__':
                     axs_1[1, 1].clear()
 
                 batch_samples[i, :] = noisy_sig
-                batch_targets[i, :] = clean_fft
+                batch_targets[i] = sig_f
 
             yield batch_samples, batch_targets
 
@@ -436,10 +436,19 @@ if __name__ == '__main__':
     # Instantiate an optimizer.
     dft_optimizer = optimizers.RMSprop(learning_rate=1e-6)
 
-    model = Sequential()
-    model.add(layers.Input(shape=(signal_length)))
-    model.add(DFT(num_samples=signal_length, name='dft_1'))
+    signal_input = Input(shape=(signal_length))
+    signal_dft = DFT(num_samples=signal_length, name='dft_1')(signal_input)
+    
+    signal_dft_abs = tf.abs(signal_dft)
+    
+    dense_layer_1 = layers.Dense(units=128, activation='relu')(signal_dft)
+    dense_layer_2 = layers.Dense(units=1)(dense_layer_1)
+    
+    model = Model(signal_input, dense_layer_2)
     model.compile(optimizer=dft_optimizer, loss='mae')
+    
+    print("\n")
+    
     model.summary()
     
     print("\n")
