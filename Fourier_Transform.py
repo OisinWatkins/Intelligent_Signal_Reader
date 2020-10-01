@@ -282,11 +282,11 @@ class DFT(layers.Layer):
     """
     This layer implements a DFT on the input signal.
 
-    output = input * twiddle
+    output = input * tf.complex(twiddle_real, twiddle_imag)
 
-    where `input` is the input signal of length N and and `twiddle` is a matrix created
-    by the layer of size N x N. Each index in `twiddle` is a Twiddle Factor
-    (dtype: tf.complex64) needed to perform the DFT, and is generated using the
+    where `input` is the input signal of length N and and `twiddle_real` / `twiddle_real`
+    is a matrix created by the layer of size N x N. Each index in `twiddle` is half of a
+    Twiddle Factor (dtype: tf.complex64) needed to perform the DFT, and is generated using the
     Wnp function defined in this file. The output of this layer is computed using the
     tf.tensordot(...) function.
 
@@ -308,7 +308,7 @@ class DFT(layers.Layer):
         N-D tensor with shape: `(batch_size, num_samples)`.
     """
 
-    def __init__(self, num_samples: int = 1, kernel_regularizer=None, kernel_constraint=None, **kwargs):
+    def __init__(self, num_samples: int, kernel_regularizer=None, kernel_constraint=None, **kwargs):
         super(DFT, self).__init__(**kwargs)
 
         if (num_samples is None) or not (num_samples > 0):
@@ -322,13 +322,15 @@ class DFT(layers.Layer):
                 row.append(Wnp(N=self.dimension, p=(i * j)))
             W.append(row)
 
-        self.twiddle = tf.Variable(initial_value=tf.convert_to_tensor(W, dtype=tf.complex64), trainable=True,
-                                   dtype=tf.complex64)
+        self.twiddle_real = tf.Variable(initial_value=tf.math.real(tf.convert_to_tensor(W, dtype=tf.complex64)), 
+                                        trainable=True, dtype=tf.float32)
+        self.twiddle_imag = tf.Variable(initial_value=tf.math.imag(tf.convert_to_tensor(W, dtype=tf.complex64)),
+                                        trainable=True, dtype=tf.float32)
+        W = None
+        
         self.kernel_regularizer = regularizers.get(kernel_regularizer)
         self.kernel_constraint = constraints.get(kernel_constraint)
         self.built = True
-
-    #  def build(self, **kwargs):
 
     def call(self, inputs, **kwargs):
         # Checking inputs for validity
@@ -352,12 +354,13 @@ class DFT(layers.Layer):
             num_zeros_to_add = next_power_of_2(N) - N
             inputs = tf.concat([inputs, tf.zeros(num_zeros_to_add, dtype=tf.complex64)])
 
-        if not (N == self.twiddle.shape.as_list()[0] and N == self.twiddle.shape.as_list()[1]):
+        if not (N == self.twiddle_real.shape.as_list()[0] and N == self.twiddle_real.shape.as_list()[1]) \
+                and not (N == self.twiddle_imag.shape.as_list()[0] and N == self.twiddle_imag.shape.as_list()[1]):
             print(f"Input tensor and Twiddle Array do not have compatible shapes\nInput Tensor shape: "
                   f"{inputs.shape.as_list()}\nTwiddle Array Shape: {self.twiddle.shape.as_list()}")
             raise ValueError("Input shape is invalid and/or Twiddle array shape is invalid")
 
-        output_val = tf.tensordot(inputs, self.twiddle, axes=1, name='dft_calc')
+        output_val = tf.tensordot(inputs, tf.complex(self.twiddle_real, self.twiddle_imag), axes=1, name='dft_calc')
         return output_val
 
     def compute_output_shape(self, input_shape):
@@ -391,7 +394,7 @@ if __name__ == '__main__':
         plt.ion()
         while True:
             batch_samples = np.zeros(shape=(batch_size, sig_len), dtype=np.float32)
-            batch_targets = np.zeros(shape=(batch_size, sig_len), dtype=np.complex64)
+            batch_targets = np.zeros(shape=(batch_size, 1), dtype=np.float32)
             for i in range(batch_size):
                 OSR = 3
                 num_cycles = (sig_len + 1) / OSR
@@ -434,17 +437,16 @@ if __name__ == '__main__':
     generator = random_sine_generator(signal_length, batch_size=1, plot_data=False)
     
     # Instantiate an optimizer.
-    dft_optimizer = optimizers.RMSprop(learning_rate=1e-6)
+    dft_optimizer = optimizers.RMSprop(learning_rate=1e-4)
 
-    signal_input = Input(shape=(signal_length))
-    signal_dft = DFT(num_samples=signal_length, name='dft_1')(signal_input)
-    
-    signal_dft_abs = tf.abs(signal_dft)
-    
-    dense_layer_1 = layers.Dense(units=128, activation='relu')(signal_dft)
-    dense_layer_2 = layers.Dense(units=1)(dense_layer_1)
-    
-    model = Model(signal_input, dense_layer_2)
+    sig_input = Input(shape=(signal_length))
+    dft_output = DFT(num_samples=signal_length, name='dft_1')(sig_input)
+    dft_output_mag = tf.abs(dft_output)
+
+    dense_layer_1 = layers.Dense(units=64, activation='relu')(dft_output_mag)
+    signal_freq = layers.Dense(units=1)(dense_layer_1)
+
+    model = Model(sig_input, signal_freq)
     model.compile(optimizer=dft_optimizer, loss='mae')
     
     print("\n")
@@ -453,10 +455,17 @@ if __name__ == '__main__':
     
     print("\n")
         
-    epochs = 10
+    epochs = 100
     steps_per_epoch = 1000
     
     model.fit(x=generator, epochs=epochs, steps_per_epoch=steps_per_epoch, verbose=2)
+    
+    
+    
+    
+    
+    
+    
     
     # for epoch in range(epochs):
         # print(f"\nStart of epoch {epoch}")
