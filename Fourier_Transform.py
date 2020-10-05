@@ -82,9 +82,6 @@ class DFT(layers.Layer):
 
         if (num_samples is None) or not (num_samples > 0):
             raise ValueError('The dimension of the inputs to `DFT` should be defined. Found `None` or `0`.')
-        """
-        Check this bit later, it might not be needed for the DFT
-        """
         self.dimension = next_power_of_2(num_samples)
 
         W = []
@@ -122,9 +119,6 @@ class DFT(layers.Layer):
             N = self.dimension
             print(f"N changed to {N}")
 
-        """
-        Check this bit later, it might not be needed for the DFT
-        """
         # Checking input length
         if not math.log2(N).is_integer():
             # --Changing input length
@@ -178,6 +172,7 @@ if __name__ == '__main__':
           ">> Below will be defined a very simple model to show you what to expect when you\n"
           ">> include this layer in your models. It's best (where possible) to follow the below\n"
           ">> guidelines in your projects:\n"
+          ">> -> Keep your input of length 2^n to avoide padding the input signal with 0's\n"
           ">> -> Have this layer high up in your model, close to the input.\n"
           ">> -> Follow this layer with post-processing which will convert the DFT to meaningful real-valued data.\n"
           ">> -> Make certain your optimizer and loss function (and all other configurables) are compatible with the "
