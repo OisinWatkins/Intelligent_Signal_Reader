@@ -47,7 +47,7 @@ if __name__ == '__main__':
           ">>\n")
     train_audio_path = 'C:\\Users\\owatkins\\OneDrive - Analog Devices, Inc\\Documents\\Project Folder\\Project 3\\' \
                        'tensorflow-speech-recognition-challenge\\train\\audio'
-    samples, sample_rate = librosa.load(train_audio_path + 'yes/0a7c2a8d_nohash_0.wav', sr=16000)
+    samples, sample_rate = librosa.load(train_audio_path + '\\yes\\0a7c2a8d_nohash_0.wav', sr=16000)
     fig = plt.figure(figsize=(14, 8))
     ax1 = fig.add_subplot(211)
     ax1.set_title('Raw wave of ' + '../train/audio/yes/0a7c2a8d_nohash_0.wav')
@@ -71,7 +71,7 @@ if __name__ == '__main__':
     # find count of each label and plot bar graph
     no_of_recordings = []
     for label in labels:
-        waves = [f for f in os.listdir(train_audio_path + '/' + label) if f.endswith('.wav')]
+        waves = [f for f in os.listdir(train_audio_path + '\\' + label) if f.endswith('.wav')]
         no_of_recordings.append(len(waves))
 
     # plot
