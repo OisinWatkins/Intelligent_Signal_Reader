@@ -140,7 +140,8 @@ class DFT(layers.Layer):
     def get_config(self):
         config = super(DFT, self).get_config()
 
-        config.update({'twiddle': self.twiddle,
+        config.update({'twiddle_real': self.twiddle_real,
+                       'twiddle_imag': self.twiddle_imag,
                        'kernel_regularizer': self.kernel_regularizer,
                        'kernel_constraint': self.kernel_constraint
                        })

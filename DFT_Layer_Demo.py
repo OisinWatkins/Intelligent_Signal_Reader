@@ -2,6 +2,7 @@
 
 """
 import os
+import time
 import librosa
 import IPython.display as ipd
 import matplotlib.pyplot as plt
@@ -27,7 +28,7 @@ if __name__ == '__main__':
 
     print("\n>>\n"
           ">> This file will run a bespoke model to handle the following task:\n"
-          ">> -> `Speach-to-Text conversion`\n"
+          ">> -> `Speech Recognition`\n"
           ">>\n"
           ">> To accomplish this, I will define 2 models:\n"
           ">> -> One with the DFT Layer high up in the architecture.\n"
@@ -39,7 +40,7 @@ if __name__ == '__main__':
           ">> should ensure I'm comparing my work to the tried and tested models used in the world today.\n"
           ">>\n"
           ">> The data I'm using for this application comes from Kaggle:\n"
-          ">> https://www.kaggle.com/c/tensorflow-speech-recognition-challenge/data"
+          ">> https://www.kaggle.com/c/tensorflow-speech-recognition-challenge/data\n"
           ">>\n")
 
     print("\n>>\n"
@@ -57,7 +58,7 @@ if __name__ == '__main__':
 
     # Let us now look at the sampling rate of the audio signals
     ipd.Audio(samples, rate=sample_rate)
-    print(sample_rate)
+    print(f"Audio Sampling rate: {sample_rate} Hz")
 
     # From the above, we can understand that the sampling rate of the signal is 16000 Hz. Let us resample it to 8000 Hz
     # as typically human speech is sampled at 8kHz
@@ -104,7 +105,7 @@ if __name__ == '__main__':
           ">> steps to deal with this. Here are the two steps we’ll follow:\n"
           ">>\n"
           ">> -> Resampling\n"
-          ">> -> Removing shorter commands of less than 1 second\n"
+          ">> -> Removing commands shorter than 1 second\n"
           ">>\n"
           ">> Let us define these preprocessing steps in the below code snippet:\n"
           ">>\n")
@@ -131,55 +132,167 @@ if __name__ == '__main__':
     y = tf.keras.utils.to_categorical(y, num_classes=len(labels))
 
     # Reshape the 2D array to 3D since the input to the conv1d must be a 3D array:
-    all_wave = np.array(all_wave).reshape(-1, 8000, 1)
+    all_wave = np.array(all_wave) # .reshape(-1, 8000, 1)
+    print(f"Training Data Shape: {all_wave.shape}")
+    print(f"Presentation Shape: {all_wave[0].shape}")
 
     print("\n>>\n"
           ">> Next, we will train the model on 80% of the data and validate on the remaining 20%:\n"
           ">>\n")
-    x_tr, x_val, y_tr, y_val = train_test_split(np.array(all_wave), np.array(y), stratify=y, test_size=0.2,
+    x_tr, x_val, y_tr, y_val = train_test_split(all_wave, np.array(y), stratify=y, test_size=0.2,
                                                 random_state=777, shuffle=True)
 
+    start_time = time.time()
     # Define The standard Model, no DFT
-    inputs = Input(shape=(8000, 1))
 
-    # First Conv1D layer
-    conv = layers.Conv1D(8, 13, padding='valid', activation='relu', strides=1)(inputs)
-    conv = layers.MaxPooling1D(3)(conv)
-    conv = layers.Dropout(0.3)(conv)
+    # inputs = Input(shape=(8000, 1))
 
-    # Second Conv1D layer
-    conv = layers.Conv1D(16, 11, padding='valid', activation='relu', strides=1)(conv)
-    conv = layers.MaxPooling1D(3)(conv)
-    conv = layers.Dropout(0.3)(conv)
+    # # Standard Model
+    # # First Conv1D layer
+    # conv = layers.Conv1D(8, 13, padding='valid', activation='relu', strides=1)(inputs)
+    # conv = layers.MaxPooling1D(3)(conv)
+    # conv = layers.Dropout(0.3)(conv)
+    #
+    # # Second Conv1D layer
+    # conv = layers.Conv1D(16, 11, padding='valid', activation='relu', strides=1)(conv)
+    # conv = layers.MaxPooling1D(3)(conv)
+    # conv = layers.Dropout(0.3)(conv)
+    #
+    # # Third Conv1D layer
+    # conv = layers.Conv1D(32, 9, padding='valid', activation='relu', strides=1)(conv)
+    # conv = layers.MaxPooling1D(3)(conv)
+    # conv = layers.Dropout(0.3)(conv)
+    #
+    # # Fourth Conv1D layer
+    # conv = layers.Conv1D(64, 7, padding='valid', activation='relu', strides=1)(conv)
+    # conv = layers.MaxPooling1D(3)(conv)
+    # conv = layers.Dropout(0.3)(conv)
+    #
+    # # Flatten layer
+    # conv = layers.Flatten()(conv)
+    #
+    # # Dense Layer 1
+    # conv = layers.Dense(256, activation='relu')(conv)
+    # conv = layers.Dropout(0.3)(conv)
+    #
+    # # Dense Layer 2
+    # conv = layers.Dense(128, activation='relu')(conv)
+    # conv = layers.Dropout(0.3)(conv)
 
-    # Third Conv1D layer
-    conv = layers.Conv1D(32, 9, padding='valid', activation='relu', strides=1)(conv)
-    conv = layers.MaxPooling1D(3)(conv)
-    conv = layers.Dropout(0.3)(conv)
+    # outputs = layers.Dense(len(labels), activation='softmax')(conv)
+    #
+    # model = Model(inputs, outputs)
+    # model.summary()
+    #
+    # # Define the loss function to be categorical cross-entropy since it is a multi-classification problem:
+    # model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
-    # Fourth Conv1D layer
-    conv = layers.Conv1D(64, 7, padding='valid', activation='relu', strides=1)(conv)
-    conv = layers.MaxPooling1D(3)(conv)
-    conv = layers.Dropout(0.3)(conv)
+    # Define The DFT Model
+    inputs = Input(shape=(8000, ))
+    padding = tf.constant([[0, 0], [32, 32]])
+    sig_t = tf.pad(inputs, padding, 'CONSTANT')
 
-    # Flatten layer
-    conv = layers.Flatten()(conv)
+    sig_t_split = tf.split(sig_t, num_or_size_splits=63, axis=1)
 
-    # Dense Layer 1
-    conv = layers.Dense(256, activation='relu')(conv)
-    conv = layers.Dropout(0.3)(conv)
+    sig_freq_0 = DFT(num_samples=128)(sig_t_split[0])
+    sig_freq_1 = DFT(num_samples=128)(sig_t_split[1])
+    sig_freq_2 = DFT(num_samples=128)(sig_t_split[2])
+    sig_freq_3 = DFT(num_samples=128)(sig_t_split[3])
+    sig_freq_4 = DFT(num_samples=128)(sig_t_split[4])
+    sig_freq_5 = DFT(num_samples=128)(sig_t_split[5])
+    sig_freq_6 = DFT(num_samples=128)(sig_t_split[6])
+    sig_freq_7 = DFT(num_samples=128)(sig_t_split[7])
+    sig_freq_8 = DFT(num_samples=128)(sig_t_split[8])
+    sig_freq_9 = DFT(num_samples=128)(sig_t_split[9])
+    sig_freq_10 = DFT(num_samples=128)(sig_t_split[10])
+    print("First 10 DFT's done...")
 
-    # Dense Layer 2
-    conv = layers.Dense(128, activation='relu')(conv)
-    conv = layers.Dropout(0.3)(conv)
+    sig_freq_11 = DFT(num_samples=128)(sig_t_split[11])
+    sig_freq_12 = DFT(num_samples=128)(sig_t_split[12])
+    sig_freq_13 = DFT(num_samples=128)(sig_t_split[13])
+    sig_freq_14 = DFT(num_samples=128)(sig_t_split[14])
+    sig_freq_15 = DFT(num_samples=128)(sig_t_split[15])
+    sig_freq_16 = DFT(num_samples=128)(sig_t_split[16])
+    sig_freq_17 = DFT(num_samples=128)(sig_t_split[17])
+    sig_freq_18 = DFT(num_samples=128)(sig_t_split[18])
+    sig_freq_19 = DFT(num_samples=128)(sig_t_split[19])
+    sig_freq_20 = DFT(num_samples=128)(sig_t_split[20])
+    print("First 20 DFT's done...")
 
-    outputs = layers.Dense(len(labels), activation='softmax')(conv)
+    sig_freq_21 = DFT(num_samples=128)(sig_t_split[21])
+    sig_freq_22 = DFT(num_samples=128)(sig_t_split[22])
+    sig_freq_23 = DFT(num_samples=128)(sig_t_split[23])
+    sig_freq_24 = DFT(num_samples=128)(sig_t_split[24])
+    sig_freq_25 = DFT(num_samples=128)(sig_t_split[25])
+    sig_freq_26 = DFT(num_samples=128)(sig_t_split[26])
+    sig_freq_27 = DFT(num_samples=128)(sig_t_split[27])
+    sig_freq_28 = DFT(num_samples=128)(sig_t_split[28])
+    sig_freq_29 = DFT(num_samples=128)(sig_t_split[29])
+    sig_freq_30 = DFT(num_samples=128)(sig_t_split[30])
+    print("First 30 DFT's done...")
+
+    sig_freq_31 = DFT(num_samples=128)(sig_t_split[31])
+    sig_freq_32 = DFT(num_samples=128)(sig_t_split[32])
+    sig_freq_33 = DFT(num_samples=128)(sig_t_split[33])
+    sig_freq_34 = DFT(num_samples=128)(sig_t_split[34])
+    sig_freq_35 = DFT(num_samples=128)(sig_t_split[35])
+    sig_freq_36 = DFT(num_samples=128)(sig_t_split[36])
+    sig_freq_37 = DFT(num_samples=128)(sig_t_split[37])
+    sig_freq_38 = DFT(num_samples=128)(sig_t_split[38])
+    sig_freq_39 = DFT(num_samples=128)(sig_t_split[39])
+    sig_freq_40 = DFT(num_samples=128)(sig_t_split[40])
+    print("First 40 DFT's done...")
+
+    sig_freq_41 = DFT(num_samples=128)(sig_t_split[41])
+    sig_freq_42 = DFT(num_samples=128)(sig_t_split[42])
+    sig_freq_43 = DFT(num_samples=128)(sig_t_split[43])
+    sig_freq_44 = DFT(num_samples=128)(sig_t_split[44])
+    sig_freq_45 = DFT(num_samples=128)(sig_t_split[45])
+    sig_freq_46 = DFT(num_samples=128)(sig_t_split[46])
+    sig_freq_47 = DFT(num_samples=128)(sig_t_split[47])
+    sig_freq_48 = DFT(num_samples=128)(sig_t_split[48])
+    sig_freq_49 = DFT(num_samples=128)(sig_t_split[49])
+    sig_freq_50 = DFT(num_samples=128)(sig_t_split[50])
+    print("First 50 DFT's done...")
+
+    sig_freq_51 = DFT(num_samples=128)(sig_t_split[51])
+    sig_freq_52 = DFT(num_samples=128)(sig_t_split[52])
+    sig_freq_53 = DFT(num_samples=128)(sig_t_split[53])
+    sig_freq_54 = DFT(num_samples=128)(sig_t_split[54])
+    sig_freq_55 = DFT(num_samples=128)(sig_t_split[55])
+    sig_freq_56 = DFT(num_samples=128)(sig_t_split[56])
+    sig_freq_57 = DFT(num_samples=128)(sig_t_split[57])
+    sig_freq_58 = DFT(num_samples=128)(sig_t_split[58])
+    sig_freq_59 = DFT(num_samples=128)(sig_t_split[59])
+    sig_freq_60 = DFT(num_samples=128)(sig_t_split[60])
+    sig_freq_61 = DFT(num_samples=128)(sig_t_split[61])
+    sig_freq_62 = DFT(num_samples=128)(sig_t_split[62])
+    print("All DFT's done!")
+
+    sig_freq_abs = tf.abs(tf.stack([sig_freq_0, sig_freq_1, sig_freq_2, sig_freq_3, sig_freq_4, sig_freq_5, sig_freq_6,
+                                    sig_freq_7, sig_freq_8, sig_freq_9, sig_freq_1, sig_freq_1, sig_freq_1, sig_freq_13,
+                                    sig_freq_14, sig_freq_15, sig_freq_16, sig_freq_17, sig_freq_18, sig_freq_19, sig_freq_20,
+                                    sig_freq_21, sig_freq_22, sig_freq_23, sig_freq_24, sig_freq_25, sig_freq_26, sig_freq_27,
+                                    sig_freq_28, sig_freq_29, sig_freq_30, sig_freq_31, sig_freq_32, sig_freq_33, sig_freq_34,
+                                    sig_freq_35, sig_freq_36, sig_freq_37, sig_freq_38, sig_freq_39, sig_freq_40, sig_freq_41,
+                                    sig_freq_42, sig_freq_43, sig_freq_44, sig_freq_45, sig_freq_46, sig_freq_47, sig_freq_48,
+                                    sig_freq_49, sig_freq_50, sig_freq_51, sig_freq_52, sig_freq_53, sig_freq_54, sig_freq_55,
+                                    sig_freq_56, sig_freq_57, sig_freq_58, sig_freq_59, sig_freq_60, sig_freq_61, sig_freq_62]))
+
+    sig_freq_abs_transpose = tf.transpose(sig_freq_abs, perm=(1, 0, 2))
+    print("DFT Stack Complete")
+
+    conv = layers.SeparableConv1D(64, kernel_size=(4), activation='relu')(sig_freq_abs_transpose)
+    dense = layers.Dense(len(labels), activation='sigmoid')(conv)
+
+    batch_norm = tf.keras.backend.mean(dense, 1)
+
+    outputs = layers.Dense(len(labels), activation='softmax')(batch_norm)
 
     model = Model(inputs, outputs)
-    model.summary()
-
-    # Define the loss function to be categorical cross-entropy since it is a multi-classification problem:
+    print(f"\n\t--------- Model building took {(time.time() - start_time)} seconds ---------\n")
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    model.summary()
 
     # Early stopping and model checkpoints are the callbacks to stop training the neural network at the right time and
     # to save the best model after every epoch:
@@ -190,9 +303,9 @@ if __name__ == '__main__':
     history = model.fit(x_tr, y_tr, epochs=100, callbacks=[es, mc], batch_size=32, validation_data=(x_val, y_val))
 
     model.save("C:\\Users\\owatkins\\OneDrive - Analog Devices, Inc\\Documents\\Project Folder\\Project 3\\Code\\"
-               "Intelligent_Signal_Reader\\standard_model.h5")
+               "Intelligent_Signal_Reader\\DFT_model.h5")
 
     plt.plot(history.history['loss'], label='train')
-    plt.plot(history.history['val_loss'], label='test')
+    plt.plot(history.history['val_loss'], label='validation')
     plt.legend()
     plt.show()
