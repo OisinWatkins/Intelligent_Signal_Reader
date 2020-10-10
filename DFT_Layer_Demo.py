@@ -17,7 +17,7 @@ from tensorflow.keras import Sequential
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 from tensorflow.python.keras import constraints
 from tensorflow.python.keras import regularizers
-from Fourier_Transform import DFT
+from Fourier_Transform import DFT, Wnp
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 
@@ -41,6 +41,9 @@ if __name__ == '__main__':
           ">>\n"
           ">> The data I'm using for this application comes from Kaggle:\n"
           ">> https://www.kaggle.com/c/tensorflow-speech-recognition-challenge/data\n"
+          ">>\n"
+          ">> The Standard model I'm using comes from:\n"
+          ">> https://github.com/aravindpai/Speech-Recognition/blob/master/Speech%20Recognition.ipynb\n"
           ">>\n")
 
     print("\n>>\n"
@@ -193,80 +196,89 @@ if __name__ == '__main__':
     sig_t = tf.pad(inputs, padding, 'CONSTANT')
 
     sig_t_split = tf.split(sig_t, num_or_size_splits=63, axis=1)
+    
+    twiddle_init = []
+    for i in range(128):
+        row = []
+        for j in range(128):
+            row.append(Wnp(N=128, p=(i * j)))
+        twiddle_init.append(row)
+        
+    twiddle_init = np.array(twiddle_init)
 
-    sig_freq_0 = DFT(num_samples=128)(sig_t_split[0])
-    sig_freq_1 = DFT(num_samples=128)(sig_t_split[1])
-    sig_freq_2 = DFT(num_samples=128)(sig_t_split[2])
-    sig_freq_3 = DFT(num_samples=128)(sig_t_split[3])
-    sig_freq_4 = DFT(num_samples=128)(sig_t_split[4])
-    sig_freq_5 = DFT(num_samples=128)(sig_t_split[5])
-    sig_freq_6 = DFT(num_samples=128)(sig_t_split[6])
-    sig_freq_7 = DFT(num_samples=128)(sig_t_split[7])
-    sig_freq_8 = DFT(num_samples=128)(sig_t_split[8])
-    sig_freq_9 = DFT(num_samples=128)(sig_t_split[9])
-    sig_freq_10 = DFT(num_samples=128)(sig_t_split[10])
+    sig_freq_0 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[0])
+    sig_freq_1 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[1])
+    sig_freq_2 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[2])
+    sig_freq_3 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[3])
+    sig_freq_4 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[4])
+    sig_freq_5 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[5])
+    sig_freq_6 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[6])
+    sig_freq_7 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[7])
+    sig_freq_8 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[8])
+    sig_freq_9 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[9])
+    sig_freq_10 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[10])
     print("First 10 DFT's done...")
 
-    sig_freq_11 = DFT(num_samples=128)(sig_t_split[11])
-    sig_freq_12 = DFT(num_samples=128)(sig_t_split[12])
-    sig_freq_13 = DFT(num_samples=128)(sig_t_split[13])
-    sig_freq_14 = DFT(num_samples=128)(sig_t_split[14])
-    sig_freq_15 = DFT(num_samples=128)(sig_t_split[15])
-    sig_freq_16 = DFT(num_samples=128)(sig_t_split[16])
-    sig_freq_17 = DFT(num_samples=128)(sig_t_split[17])
-    sig_freq_18 = DFT(num_samples=128)(sig_t_split[18])
-    sig_freq_19 = DFT(num_samples=128)(sig_t_split[19])
-    sig_freq_20 = DFT(num_samples=128)(sig_t_split[20])
+    sig_freq_11 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[11])
+    sig_freq_12 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[12])
+    sig_freq_13 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[13])
+    sig_freq_14 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[14])
+    sig_freq_15 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[15])
+    sig_freq_16 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[16])
+    sig_freq_17 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[17])
+    sig_freq_18 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[18])
+    sig_freq_19 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[19])
+    sig_freq_20 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[20])
     print("First 20 DFT's done...")
 
-    sig_freq_21 = DFT(num_samples=128)(sig_t_split[21])
-    sig_freq_22 = DFT(num_samples=128)(sig_t_split[22])
-    sig_freq_23 = DFT(num_samples=128)(sig_t_split[23])
-    sig_freq_24 = DFT(num_samples=128)(sig_t_split[24])
-    sig_freq_25 = DFT(num_samples=128)(sig_t_split[25])
-    sig_freq_26 = DFT(num_samples=128)(sig_t_split[26])
-    sig_freq_27 = DFT(num_samples=128)(sig_t_split[27])
-    sig_freq_28 = DFT(num_samples=128)(sig_t_split[28])
-    sig_freq_29 = DFT(num_samples=128)(sig_t_split[29])
-    sig_freq_30 = DFT(num_samples=128)(sig_t_split[30])
+    sig_freq_21 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[21])
+    sig_freq_22 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[22])
+    sig_freq_23 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[23])
+    sig_freq_24 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[24])
+    sig_freq_25 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[25])
+    sig_freq_26 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[26])
+    sig_freq_27 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[27])
+    sig_freq_28 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[28])
+    sig_freq_29 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[29])
+    sig_freq_30 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[30])
     print("First 30 DFT's done...")
 
-    sig_freq_31 = DFT(num_samples=128)(sig_t_split[31])
-    sig_freq_32 = DFT(num_samples=128)(sig_t_split[32])
-    sig_freq_33 = DFT(num_samples=128)(sig_t_split[33])
-    sig_freq_34 = DFT(num_samples=128)(sig_t_split[34])
-    sig_freq_35 = DFT(num_samples=128)(sig_t_split[35])
-    sig_freq_36 = DFT(num_samples=128)(sig_t_split[36])
-    sig_freq_37 = DFT(num_samples=128)(sig_t_split[37])
-    sig_freq_38 = DFT(num_samples=128)(sig_t_split[38])
-    sig_freq_39 = DFT(num_samples=128)(sig_t_split[39])
-    sig_freq_40 = DFT(num_samples=128)(sig_t_split[40])
+    sig_freq_31 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[31])
+    sig_freq_32 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[32])
+    sig_freq_33 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[33])
+    sig_freq_34 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[34])
+    sig_freq_35 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[35])
+    sig_freq_36 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[36])
+    sig_freq_37 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[37])
+    sig_freq_38 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[38])
+    sig_freq_39 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[39])
+    sig_freq_40 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[40])
     print("First 40 DFT's done...")
 
-    sig_freq_41 = DFT(num_samples=128)(sig_t_split[41])
-    sig_freq_42 = DFT(num_samples=128)(sig_t_split[42])
-    sig_freq_43 = DFT(num_samples=128)(sig_t_split[43])
-    sig_freq_44 = DFT(num_samples=128)(sig_t_split[44])
-    sig_freq_45 = DFT(num_samples=128)(sig_t_split[45])
-    sig_freq_46 = DFT(num_samples=128)(sig_t_split[46])
-    sig_freq_47 = DFT(num_samples=128)(sig_t_split[47])
-    sig_freq_48 = DFT(num_samples=128)(sig_t_split[48])
-    sig_freq_49 = DFT(num_samples=128)(sig_t_split[49])
-    sig_freq_50 = DFT(num_samples=128)(sig_t_split[50])
+    sig_freq_41 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[41])
+    sig_freq_42 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[42])
+    sig_freq_43 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[43])
+    sig_freq_44 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[44])
+    sig_freq_45 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[45])
+    sig_freq_46 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[46])
+    sig_freq_47 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[47])
+    sig_freq_48 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[48])
+    sig_freq_49 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[49])
+    sig_freq_50 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[50])
     print("First 50 DFT's done...")
 
-    sig_freq_51 = DFT(num_samples=128)(sig_t_split[51])
-    sig_freq_52 = DFT(num_samples=128)(sig_t_split[52])
-    sig_freq_53 = DFT(num_samples=128)(sig_t_split[53])
-    sig_freq_54 = DFT(num_samples=128)(sig_t_split[54])
-    sig_freq_55 = DFT(num_samples=128)(sig_t_split[55])
-    sig_freq_56 = DFT(num_samples=128)(sig_t_split[56])
-    sig_freq_57 = DFT(num_samples=128)(sig_t_split[57])
-    sig_freq_58 = DFT(num_samples=128)(sig_t_split[58])
-    sig_freq_59 = DFT(num_samples=128)(sig_t_split[59])
-    sig_freq_60 = DFT(num_samples=128)(sig_t_split[60])
-    sig_freq_61 = DFT(num_samples=128)(sig_t_split[61])
-    sig_freq_62 = DFT(num_samples=128)(sig_t_split[62])
+    sig_freq_51 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[51])
+    sig_freq_52 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[52])
+    sig_freq_53 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[53])
+    sig_freq_54 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[54])
+    sig_freq_55 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[55])
+    sig_freq_56 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[56])
+    sig_freq_57 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[57])
+    sig_freq_58 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[58])
+    sig_freq_59 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[59])
+    sig_freq_60 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[60])
+    sig_freq_61 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[61])
+    sig_freq_62 = DFT(num_samples=128, twiddle_initialiser=twiddle_init.copy())(sig_t_split[62])
     print("All DFT's done!")
 
     sig_freq_abs = tf.abs(tf.stack([sig_freq_0, sig_freq_1, sig_freq_2, sig_freq_3, sig_freq_4, sig_freq_5, sig_freq_6,
@@ -282,28 +294,42 @@ if __name__ == '__main__':
     sig_freq_abs_transpose = tf.transpose(sig_freq_abs, perm=(1, 0, 2))
     print("DFT Stack Complete")
 
-    conv = layers.SeparableConv1D(64, kernel_size=(4), activation='relu')(sig_freq_abs_transpose)
-    dense = layers.Dense(len(labels), activation='sigmoid')(conv)
+    conv1 = layers.SeparableConv1D(256, kernel_size=(4), activation='relu')(sig_freq_abs_transpose)
+    maxpool1 = layers.MaxPooling1D(8)(conv1)
+    dropout1 = layers.Dropout(0.4)(maxpool1)
 
-    batch_norm = tf.keras.backend.mean(dense, 1)
+    conv2 = layers.SeparableConv1D(128, kernel_size=(4), activation='relu')(dropout1)
+    maxpool2 = layers.MaxPooling1D(2)(conv2)
+    dropout2 = layers.Dropout(0.4)(maxpool2)
 
-    outputs = layers.Dense(len(labels), activation='softmax')(batch_norm)
+    dense = layers.Dense(len(labels), activation='relu')(dropout2)
+
+    dense_mean = tf.keras.backend.mean(dense, 1)
+
+    outputs = layers.Dense(len(labels), activation='softmax')(dense_mean)
 
     model = Model(inputs, outputs)
+
     print(f"\n\t--------- Model building took {(time.time() - start_time)} seconds ---------\n")
+
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
     model.summary()
 
     # Early stopping and model checkpoints are the callbacks to stop training the neural network at the right time and
     # to save the best model after every epoch:
-    es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=10, min_delta=0.0001)
+    es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=5, min_delta=0.0001)
     mc = ModelCheckpoint("C:\\Users\\owatkins\\OneDrive - Analog Devices, Inc\\Documents\\Project Folder\\Project 3\\Code\\"
                "Intelligent_Signal_Reader\\best_model.hdf5", monitor='val_acc', verbose=1, save_best_only=True, mode='max')
 
-    history = model.fit(x_tr, y_tr, epochs=100, callbacks=[es, mc], batch_size=32, validation_data=(x_val, y_val))
+    history = model.fit(x_tr, y_tr, epochs=100, callbacks=[es], batch_size=32, validation_data=(x_val, y_val))
+
+    # model.save_weights("C:\\Users\\owatkins\\OneDrive - Analog Devices, Inc\\Documents\\Project Folder\\Project 3\\Code\\"
+    #                    "Intelligent_Signal_Reader\\DFT_model_weights", save_format='tf')
 
     model.save("C:\\Users\\owatkins\\OneDrive - Analog Devices, Inc\\Documents\\Project Folder\\Project 3\\Code\\"
-               "Intelligent_Signal_Reader\\DFT_model.h5")
+               "Intelligent_Signal_Reader\\DFT_model.h5", include_optimizer=False)
+               
+    print("Model Saved!")
 
     plt.plot(history.history['loss'], label='train')
     plt.plot(history.history['val_loss'], label='validation')

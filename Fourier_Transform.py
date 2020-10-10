@@ -77,26 +77,29 @@ class DFT(layers.Layer):
         N-D tensor with shape: `(batch_size, num_samples)`.
     """
 
-    def __init__(self, num_samples: int, kernel_regularizer=None, kernel_constraint=None, **kwargs):
+    def __init__(self, num_samples: int, twiddle_initialiser=None, kernel_regularizer=None, kernel_constraint=None, **kwargs):
         super(DFT, self).__init__(**kwargs)
 
         if (num_samples is None) or not (num_samples > 0):
             raise ValueError('The dimension of the inputs to `DFT` should be defined. Found `None` or `0`.')
-        self.dimension = next_power_of_2(num_samples)
 
-        W = []
-        for i in range(self.dimension):
-            row = []
-            for j in range(self.dimension):
-                row.append(Wnp(N=self.dimension, p=(i * j)))
-            W.append(row)
+        if twiddle_initialiser is None:
+            W = []
+            for i in range(num_samples):
+                row = []
+                for j in range(num_samples):
+                    row.append(Wnp(N=num_samples, p=(i * j)))
+                W.append(row)
+                
+        else:
+            W = twiddle_initialiser
 
         W = tf.convert_to_tensor(W, dtype=tf.complex64)
 
         self.twiddle_real = tf.Variable(initial_value=tf.math.real(W),
-                                        trainable=True, dtype=tf.float32)
+                                        trainable=True, dtype=tf.float32, name='twiddle_real')
         self.twiddle_imag = tf.Variable(initial_value=tf.math.imag(W),
-                                        trainable=True, dtype=tf.float32)
+                                        trainable=True, dtype=tf.float32, name='twiddle_imag')
         W = None
         
         self.kernel_regularizer = regularizers.get(kernel_regularizer)
@@ -116,7 +119,7 @@ class DFT(layers.Layer):
         N = inputs.shape.as_list()[-1]
         if N is None:
             print('Signal Length has been read as None')
-            N = self.dimension
+            N = self.twiddle_real.shape.as_list()[0]
             print(f"N changed to {N}")
 
         # Checking input length
@@ -140,8 +143,8 @@ class DFT(layers.Layer):
     def get_config(self):
         config = super(DFT, self).get_config()
 
-        config.update({'twiddle_real': self.twiddle_real,
-                       'twiddle_imag': self.twiddle_imag,
+        config.update({'twiddle_real': self.twiddle_real.numpy(),
+                       'twiddle_imag': self.twiddle_imag.numpy(),
                        'kernel_regularizer': self.kernel_regularizer,
                        'kernel_constraint': self.kernel_constraint
                        })
