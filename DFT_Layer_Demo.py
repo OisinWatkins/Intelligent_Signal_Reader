@@ -360,8 +360,12 @@ if __name__ == '__main__':
     conv2 = layers.SeparableConv1D(256, kernel_size=(4), activation='relu')(dropout1)
     maxpool2 = layers.MaxPooling1D(2)(conv2)
     dropout2 = layers.Dropout(0.35)(maxpool2)
+    
+    conv3 = layers.SeparableConv1D(256, kernel_size=(4), activation='relu')(dropout2)
+    maxpool3 = layers.MaxPooling1D(2)(conv3)
+    dropout3 = layers.Dropout(0.35)(maxpool3)
 
-    dense1 = layers.Dense(64, activation='relu')(dropout2)
+    dense1 = layers.Dense(32, activation='relu')(dropout3)
 
     dense_mean = tf.keras.backend.mean(dense1, 1)
 
