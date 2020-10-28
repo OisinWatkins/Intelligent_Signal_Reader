@@ -353,24 +353,29 @@ if __name__ == '__main__':
 
     dropout0 = layers.Dropout(0.5)(sig_freq_abs_transpose)
     
-    conv1 = layers.SeparableConv1D(256, kernel_size=(4), activation='relu')(dropout0)
+    conv1 = layers.SeparableConv1D(512, kernel_size=(4), activation='relu')(dropout0)
     maxpool1 = layers.MaxPooling1D(4)(conv1)
-    dropout1 = layers.Dropout(0.35)(maxpool1)
+    dropout1 = layers.Dropout(0.3)(maxpool1)
 
-    conv2 = layers.SeparableConv1D(256, kernel_size=(4), activation='relu')(dropout1)
+    conv2 = layers.SeparableConv1D(512, kernel_size=(4), activation='relu')(dropout1)
     maxpool2 = layers.MaxPooling1D(2)(conv2)
-    dropout2 = layers.Dropout(0.35)(maxpool2)
+    dropout2 = layers.Dropout(0.3)(maxpool2)
     
     conv3 = layers.SeparableConv1D(256, kernel_size=(4), activation='relu')(dropout2)
     maxpool3 = layers.MaxPooling1D(2)(conv3)
-    dropout3 = layers.Dropout(0.35)(maxpool3)
+    dropout3 = layers.Dropout(0.3)(maxpool3)
+    
+    flatten = layers.Flatten()(dropout3)
+    
+    dense0 = layers.Dense(128, activation='relu')(flatten)
+    dropout4 = layers.Dropout(0.3)(dense0)
+    dense1 = layers.Dense(64, activation='relu')(dropout4)
+    dropout5 = layers.Dropout(0.3)(dense1)
 
-    dense1 = layers.Dense(32, activation='relu')(dropout3)
-
-    dense_mean = tf.keras.backend.mean(dense1, 1)
-
-    dense2 = layers.Dense(32, activation='relu')(dense_mean)
-    outputs = layers.Dense(len(labels), activation='softmax')(dense2)
+    # dense_mean = tf.keras.backend.mean(dense1, 1)
+    # dropout6 = layers.Dropout(0.3)(dense2)
+    
+    outputs = layers.Dense(len(labels), activation='softmax')(dropout5)
 
     model = Model(inputs, outputs)
 
