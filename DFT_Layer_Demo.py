@@ -133,7 +133,7 @@ if __name__ == '__main__':
     y = tf.keras.utils.to_categorical(y, num_classes=len(labels))
 
     # Reshape the 2D array to 3D since the input to the conv1d must be a 3D array:
-    all_wave = np.array(all_wave) # .reshape(-1, 8000, 1)
+    all_wave = np.array(all_wave)  # .reshape(-1, 8000, 1)
     print(f"Training Data Shape: {all_wave.shape}")
     print(f"Presentation Shape: {all_wave[0].shape}")
 
@@ -200,7 +200,7 @@ if __name__ == '__main__':
             
     # train_gen = training_generator(32, x_tr, y_tr)
     
-    print("Training generator defined and instantiated\n")
+    # print("Training generator defined and instantiated\n")
 
     start_time = time.time()
     # Define The standard Model, no DFT
@@ -212,38 +212,38 @@ if __name__ == '__main__':
     # conv = layers.Conv1D(8, 13, padding='valid', activation='relu', strides=1)(inputs)
     # conv = layers.MaxPooling1D(3)(conv)
     # conv = layers.Dropout(0.3)(conv)
-    #
+    
     # # Second Conv1D layer
     # conv = layers.Conv1D(16, 11, padding='valid', activation='relu', strides=1)(conv)
     # conv = layers.MaxPooling1D(3)(conv)
     # conv = layers.Dropout(0.3)(conv)
-    #
+    
     # # Third Conv1D layer
     # conv = layers.Conv1D(32, 9, padding='valid', activation='relu', strides=1)(conv)
     # conv = layers.MaxPooling1D(3)(conv)
     # conv = layers.Dropout(0.3)(conv)
-    #
+    
     # # Fourth Conv1D layer
     # conv = layers.Conv1D(64, 7, padding='valid', activation='relu', strides=1)(conv)
     # conv = layers.MaxPooling1D(3)(conv)
     # conv = layers.Dropout(0.3)(conv)
-    #
+    
     # # Flatten layer
     # conv = layers.Flatten()(conv)
-    #
+    
     # # Dense Layer 1
     # conv = layers.Dense(256, activation='relu')(conv)
     # conv = layers.Dropout(0.3)(conv)
-    #
+    
     # # Dense Layer 2
     # conv = layers.Dense(128, activation='relu')(conv)
     # conv = layers.Dropout(0.3)(conv)
 
     # outputs = layers.Dense(len(labels), activation='softmax')(conv)
-    #
+    
     # model = Model(inputs, outputs)
     # model.summary()
-    #
+    
     # # Define the loss function to be categorical cross-entropy since it is a multi-classification problem:
     # model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
@@ -352,30 +352,34 @@ if __name__ == '__main__':
     print("DFT Stack Complete")
 
     dropout0 = layers.Dropout(0.5)(sig_freq_abs_transpose)
+    norm0 = layers.BatchNormalization(axis=1)(dropout0)
     
-    conv1 = layers.SeparableConv1D(512, kernel_size=(4), activation='relu')(dropout0)
+    conv1 = layers.SeparableConv1D(512, kernel_size=(4), activation='relu')(norm0)
     maxpool1 = layers.MaxPooling1D(4)(conv1)
     dropout1 = layers.Dropout(0.3)(maxpool1)
+    norm1 = layers.BatchNormalization(axis=1)(dropout1)
 
-    conv2 = layers.SeparableConv1D(512, kernel_size=(4), activation='relu')(dropout1)
+    conv2 = layers.SeparableConv1D(512, kernel_size=(4), activation='relu')(norm1)
     maxpool2 = layers.MaxPooling1D(2)(conv2)
     dropout2 = layers.Dropout(0.3)(maxpool2)
+    norm2 = layers.BatchNormalization(axis=1)(dropout2)
     
-    conv3 = layers.SeparableConv1D(256, kernel_size=(4), activation='relu')(dropout2)
+    conv3 = layers.SeparableConv1D(256, kernel_size=(4), activation='relu')(norm2)
     maxpool3 = layers.MaxPooling1D(2)(conv3)
     dropout3 = layers.Dropout(0.3)(maxpool3)
+    norm3 = layers.BatchNormalization(axis=1)(dropout3)
     
-    flatten = layers.Flatten()(dropout3)
-    
+    flatten = layers.Flatten()(norm3)
     dense0 = layers.Dense(128, activation='relu')(flatten)
     dropout4 = layers.Dropout(0.3)(dense0)
+    
     dense1 = layers.Dense(64, activation='relu')(dropout4)
     dropout5 = layers.Dropout(0.3)(dense1)
-
-    # dense_mean = tf.keras.backend.mean(dense1, 1)
-    # dropout6 = layers.Dropout(0.3)(dense2)
     
-    outputs = layers.Dense(len(labels), activation='softmax')(dropout5)
+    dense2 = layers.Dense(32, activation='relu')(dropout5)
+    dropout6 = layers.Dropout(0.3)(dense2)
+    
+    outputs = layers.Dense(len(labels), activation='softmax')(dropout6)
 
     model = Model(inputs, outputs)
 

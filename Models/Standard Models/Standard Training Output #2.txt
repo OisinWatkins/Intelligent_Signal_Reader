@@ -1,0 +1,189 @@
+        ---------    Running Demo for the DFT Layer    ---------
+
+
+>>
+>> This file will run a bespoke model to handle the following task:
+>> -> `Speech Recognition`
+>>
+>> To accomplish this, I will define 2 models:
+>> -> One with the DFT Layer high up in the architecture.
+>> -> One using more typical Machine Learning Practices.
+>>
+>> After training has completed I will run each model through an extensive test
+>> to determine whether or not the DFT layer bears any benefit to signal processing networks.
+>> The typical Machine Learning model will be pulled from blogposts on the internet. Doing this
+>> should ensure I'm comparing my work to the tried and tested models used in the world today.
+>>
+>> The data I'm using for this application comes from Kaggle:
+>> https://www.kaggle.com/c/tensorflow-speech-recognition-challenge/data
+>>
+>> The Standard model I'm using comes from:
+>> https://github.com/aravindpai/Speech-Recognition/blob/master/Speech%20Recognition.ipynb
+>>
+
+
+>>
+>> First, we’ll visualize the audio signal in the time domain:
+>>
+
+Audio Sampling rate: 16000 Hz
+
+>>
+>> Now, let’s understand the number of recordings for each voice command:
+>>
+
+
+>>
+>> What’s next? A look at the distribution of the duration of recordings:
+>>
+
+
+>>
+>> In the data exploration part earlier, we have seen that the duration of a few recordings is less than 1
+>> second and the sampling rate is too high. So, let us read the audio waves and use the below-preprocessing
+>> steps to deal with this. Here are the two steps we’ll follow:
+>>
+>> -> Resampling
+>> -> Removing commands shorter than 1 second
+>>
+>> Let us define these preprocessing steps in the below code snippet:
+>>
+
+yes
+no
+up
+down
+left
+right
+on
+off
+stop
+go
+
+>>
+>> Convert the output labels to integer encoded:
+>>
+
+Training Data Shape: (21312, 8000, 1)
+Presentation Shape: (8000, 1)
+
+>>
+>> Next, we will train the model on 80% of the data and validate on the remaining 20%:
+>>
+
+2020-10-31 00:02:14.319235: I tensorflow/core/platform/cpu_feature_guard.cc:145] This TensorFlow binary is optimized with Intel(R) MKL-DNN to use the following CPU instructions in performance critical operations:  AVX AVX2
+To enable them in non-MKL-DNN operations, rebuild TensorFlow with the appropriate compiler flags.
+2020-10-31 00:02:14.334638: I tensorflow/core/common_runtime/process_util.cc:115] Creating new thread pool with default inter op setting: 12. Tune using inter_op_parallelism_threads for best performance.
+Model: "model"
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #
+=================================================================
+input_1 (InputLayer)         [(None, 8000, 1)]         0
+_________________________________________________________________
+conv1d (Conv1D)              (None, 7988, 8)           112
+_________________________________________________________________
+max_pooling1d (MaxPooling1D) (None, 2662, 8)           0
+_________________________________________________________________
+dropout (Dropout)            (None, 2662, 8)           0
+_________________________________________________________________
+conv1d_1 (Conv1D)            (None, 2652, 16)          1424
+_________________________________________________________________
+max_pooling1d_1 (MaxPooling1 (None, 884, 16)           0
+_________________________________________________________________
+dropout_1 (Dropout)          (None, 884, 16)           0
+_________________________________________________________________
+conv1d_2 (Conv1D)            (None, 876, 32)           4640
+_________________________________________________________________
+max_pooling1d_2 (MaxPooling1 (None, 292, 32)           0
+_________________________________________________________________
+dropout_2 (Dropout)          (None, 292, 32)           0
+_________________________________________________________________
+conv1d_3 (Conv1D)            (None, 286, 64)           14400
+_________________________________________________________________
+max_pooling1d_3 (MaxPooling1 (None, 95, 64)            0
+_________________________________________________________________
+dropout_3 (Dropout)          (None, 95, 64)            0
+_________________________________________________________________
+flatten (Flatten)            (None, 6080)              0
+_________________________________________________________________
+dense (Dense)                (None, 256)               1556736
+_________________________________________________________________
+dropout_4 (Dropout)          (None, 256)               0
+_________________________________________________________________
+dense_1 (Dense)              (None, 128)               32896
+_________________________________________________________________
+dropout_5 (Dropout)          (None, 128)               0
+_________________________________________________________________
+dense_2 (Dense)              (None, 10)                1290
+=================================================================
+Total params: 1,611,498
+Trainable params: 1,611,498
+Non-trainable params: 0
+_________________________________________________________________
+Train on 17049 samples, validate on 4263 samples
+Epoch 1/100
+17049/17049 [==============================] - 139s 8ms/sample - loss: 2.0530 - accuracy: 0.2225 - val_loss: 1.6949 - val_accuracy: 0.3753
+Epoch 2/100
+17049/17049 [==============================] - 145s 8ms/sample - loss: 1.4832 - accuracy: 0.4515 - val_loss: 1.2740 - val_accuracy: 0.5557
+Epoch 3/100
+17049/17049 [==============================] - 149s 9ms/sample - loss: 1.2317 - accuracy: 0.5573 - val_loss: 1.0801 - val_accuracy: 0.6294
+Epoch 4/100
+17049/17049 [==============================] - 149s 9ms/sample - loss: 1.0357 - accuracy: 0.6421 - val_loss: 1.0040 - val_accuracy: 0.6338
+Epoch 5/100
+17049/17049 [==============================] - 141s 8ms/sample - loss: 0.9021 - accuracy: 0.6967 - val_loss: 0.7875 - val_accuracy: 0.7338
+Epoch 6/100
+17049/17049 [==============================] - 145s 8ms/sample - loss: 0.7962 - accuracy: 0.7275 - val_loss: 0.7336 - val_accuracy: 0.7495
+Epoch 7/100
+17049/17049 [==============================] - 150s 9ms/sample - loss: 0.7221 - accuracy: 0.7518 - val_loss: 0.7317 - val_accuracy: 0.7438
+Epoch 8/100
+17049/17049 [==============================] - 150s 9ms/sample - loss: 0.6676 - accuracy: 0.7712 - val_loss: 0.6097 - val_accuracy: 0.8018
+Epoch 9/100
+17049/17049 [==============================] - 143s 8ms/sample - loss: 0.6204 - accuracy: 0.7873 - val_loss: 0.6157 - val_accuracy: 0.7908
+Epoch 10/100
+17049/17049 [==============================] - 142s 8ms/sample - loss: 0.5859 - accuracy: 0.7986 - val_loss: 0.5713 - val_accuracy: 0.8105
+Epoch 11/100
+17049/17049 [==============================] - 145s 9ms/sample - loss: 0.5635 - accuracy: 0.8050 - val_loss: 0.5677 - val_accuracy: 0.8079
+Epoch 12/100
+17049/17049 [==============================] - 147s 9ms/sample - loss: 0.5333 - accuracy: 0.8150 - val_loss: 0.5210 - val_accuracy: 0.8243
+Epoch 13/100
+17049/17049 [==============================] - 146s 9ms/sample - loss: 0.5112 - accuracy: 0.8248 - val_loss: 0.5824 - val_accuracy: 0.7994
+Epoch 14/100
+17049/17049 [==============================] - 141s 8ms/sample - loss: 0.4899 - accuracy: 0.8291 - val_loss: 0.5360 - val_accuracy: 0.8224
+Epoch 15/100
+17049/17049 [==============================] - 146s 9ms/sample - loss: 0.4771 - accuracy: 0.8337 - val_loss: 0.5141 - val_accuracy: 0.8292
+Epoch 16/100
+17049/17049 [==============================] - 147s 9ms/sample - loss: 0.4543 - accuracy: 0.8406 - val_loss: 0.5132 - val_accuracy: 0.8330
+Epoch 17/100
+17049/17049 [==============================] - 148s 9ms/sample - loss: 0.4437 - accuracy: 0.8463 - val_loss: 0.5214 - val_accuracy: 0.8290
+Epoch 18/100
+17049/17049 [==============================] - 150s 9ms/sample - loss: 0.4290 - accuracy: 0.8516 - val_loss: 0.5020 - val_accuracy: 0.8309
+Epoch 19/100
+17049/17049 [==============================] - 147s 9ms/sample - loss: 0.4185 - accuracy: 0.8566 - val_loss: 0.4817 - val_accuracy: 0.8452
+Epoch 20/100
+17049/17049 [==============================] - 142s 8ms/sample - loss: 0.4057 - accuracy: 0.8616 - val_loss: 0.4898 - val_accuracy: 0.8393
+Epoch 21/100
+17049/17049 [==============================] - 141s 8ms/sample - loss: 0.3904 - accuracy: 0.8663 - val_loss: 0.5056 - val_accuracy: 0.8356
+Epoch 22/100
+17049/17049 [==============================] - 140s 8ms/sample - loss: 0.3874 - accuracy: 0.8666 - val_loss: 0.4788 - val_accuracy: 0.8492
+Epoch 23/100
+17049/17049 [==============================] - 140s 8ms/sample - loss: 0.3862 - accuracy: 0.8671 - val_loss: 0.5062 - val_accuracy: 0.8388
+Epoch 24/100
+17049/17049 [==============================] - 139s 8ms/sample - loss: 0.3689 - accuracy: 0.8737 - val_loss: 0.5806 - val_accuracy: 0.8067
+Epoch 25/100
+17049/17049 [==============================] - 140s 8ms/sample - loss: 0.3654 - accuracy: 0.8764 - val_loss: 0.5144 - val_accuracy: 0.8391
+Epoch 26/100
+17049/17049 [==============================] - 140s 8ms/sample - loss: 0.3570 - accuracy: 0.8793 - val_loss: 0.5108 - val_accuracy: 0.8372
+Epoch 27/100
+17049/17049 [==============================] - 144s 8ms/sample - loss: 0.3505 - accuracy: 0.8803 - val_loss: 0.4655 - val_accuracy: 0.8473
+Epoch 28/100
+17049/17049 [==============================] - 150s 9ms/sample - loss: 0.3380 - accuracy: 0.8830 - val_loss: 0.4908 - val_accuracy: 0.8440
+Epoch 29/100
+17049/17049 [==============================] - 150s 9ms/sample - loss: 0.3287 - accuracy: 0.8849 - val_loss: 0.5399 - val_accuracy: 0.8372
+Epoch 30/100
+17049/17049 [==============================] - 151s 9ms/sample - loss: 0.3252 - accuracy: 0.8888 - val_loss: 0.5109 - val_accuracy: 0.8421
+Epoch 31/100
+17049/17049 [==============================] - 152s 9ms/sample - loss: 0.3270 - accuracy: 0.8878 - val_loss: 0.4655 - val_accuracy: 0.8541
+Epoch 32/100
+17049/17049 [==============================] - 150s 9ms/sample - loss: 0.3184 - accuracy: 0.8922 - val_loss: 0.5379 - val_accuracy: 0.8414
+Epoch 00032: early stopping
+Model Saved!
