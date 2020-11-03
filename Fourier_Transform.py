@@ -35,25 +35,13 @@ def Wnp(N, p):
     return tf.math.exp(tf.multiply(tf.complex(0.0, -1.0), tf.complex((2 * np.pi * p / N), 0.0)))
 
 
-class FFT(layers.Layer):
-    """
-    This layer is designed to initially perform a standard FFT.
-    """
-
-    def __init__(self, input_shape, **kwargs):
-        super(FFT, self).__init__(**kwargs)
-
-    def call(self, inputs, **kwargs):
-        return 0
-
-
 class DFT(layers.Layer):
     """
     This layer implements a DFT on the input signal.
 
     output = input * tf.complex(twiddle_real, twiddle_imag)
 
-    where `input` is the input signal of length N and and `twiddle_real` / `twiddle_real`
+    where `input` is the input signal of length N and and `twiddle_real` / `twiddle_imag`
     is a matrix created by the layer of size N x N. Each index in `twiddle` is half of a
     Twiddle Factor (dtype: tf.complex64) needed to perform the DFT, and is generated using the
     Wnp function defined in this file. The output of this layer is computed using the
@@ -70,8 +58,6 @@ class DFT(layers.Layer):
 
     Input shape:
         N-D tensor with shape: `(batch_size, num_samples)`.
-        The most common situation would be
-        a 1D input with shape `(1, num_samples)`.
 
     Output shape:
         N-D tensor with shape: `(batch_size, num_samples)`.
@@ -82,6 +68,12 @@ class DFT(layers.Layer):
 
         if (num_samples is None) or not (num_samples > 0):
             raise ValueError('The dimension of the inputs to `DFT` should be defined. Found `None` or `0`.')
+            
+        if not math.log2(num_samples).is_integer():
+            # --Changing num_samples
+            print(f" -> Brining num_samples from current value: {num_samples} to the next power of 2: {next_power_of_2(num_samples)}\n")
+            num_samples = next_power_of_2(num_samples)
+
 
         if twiddle_initialiser is None:
             W = []

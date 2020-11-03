@@ -254,6 +254,9 @@ if __name__ == '__main__':
 
     sig_t_split = tf.split(sig_t, num_or_size_splits=63, axis=1)
     
+    # ----- TO DO -----
+    # Make this initialising stage more efficient, there's no need to make the Wnp value
+    # unique each and every time.
     twiddle_init = []
     for i in range(128):
         row = []
