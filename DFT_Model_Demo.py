@@ -1,5 +1,9 @@
 """
+This file contains code to train a neural network to correctly classify 
+1s snippets of audio using the custom DFT Layer defined in Fourier Transform.py
 
+author: Oisin Watkins
+date: 04/11/2020
 """
 import os
 import time
@@ -45,19 +49,10 @@ if __name__ == '__main__':
           ">> The Standard model I'm using comes from:\n"
           ">> https://github.com/aravindpai/Speech-Recognition/blob/master/Speech%20Recognition.ipynb\n"
           ">>\n")
-
-    print("\n>>\n"
-          ">> First, we’ll visualize the audio signal in the time domain:\n"
-          ">>\n")
+          
     train_audio_path = 'C:\\Users\\owatkins\\OneDrive - Analog Devices, Inc\\Documents\\Project Folder\\Project 3\\' \
                        'tensorflow-speech-recognition-challenge\\train\\audio'
     samples, sample_rate = librosa.load(train_audio_path + '\\yes\\0a7c2a8d_nohash_0.wav', sr=16000)
-    # fig = plt.figure(figsize=(14, 8))
-    # ax1 = fig.add_subplot(211)
-    # ax1.set_title('Raw wave of ' + '../train/audio/yes/0a7c2a8d_nohash_0.wav')
-    # ax1.set_xlabel('time')
-    # ax1.set_ylabel('Amplitude')
-    # ax1.plot(np.linspace(0, sample_rate / len(samples), sample_rate), samples)
 
     # Let us now look at the sampling rate of the audio signals
     ipd.Audio(samples, rate=sample_rate)
@@ -68,47 +63,15 @@ if __name__ == '__main__':
     samples = librosa.resample(samples, sample_rate, 8000)
     ipd.Audio(samples, rate=8000)
 
-    print("\n>>\n"
-          ">> Now, let’s understand the number of recordings for each voice command:\n"
-          ">>\n")
-    labels = os.listdir(train_audio_path)
-    # find count of each label and plot bar graph
-    no_of_recordings = []
-    for label in labels:
-        waves = [f for f in os.listdir(train_audio_path + '\\' + label) if f.endswith('.wav')]
-        no_of_recordings.append(len(waves))
-
-    # plot
-    # plt.figure(figsize=(30, 5))
-    # index = np.arange(len(labels))
-    # plt.bar(index, no_of_recordings)
-    # plt.xlabel('Commands', fontsize=12)
-    # plt.ylabel('No of recordings', fontsize=12)
-    # plt.xticks(index, labels, fontsize=15, rotation=60)
-    # plt.title('No. of recordings for each command')
-    # plt.show()
-
     labels = ["yes", "no", "up", "down", "left", "right", "on", "off", "stop", "go"]
 
     print("\n>>\n"
-          ">> What’s next? A look at the distribution of the duration of recordings:\n"
-          ">>\n")
-    duration_of_recordings = []
-    for label in labels:
-        waves = [f for f in os.listdir(train_audio_path + '/' + label) if f.endswith('.wav')]
-        for wav in waves:
-            sample_rate, samples = wavfile.read(train_audio_path + '/' + label + '/' + wav)
-            duration_of_recordings.append(float(len(samples) / sample_rate))
-
-    print("\n>>\n"
-          ">> In the data exploration part earlier, we have seen that the duration of a few recordings is less than 1\n"
-          ">> second and the sampling rate is too high. So, let us read the audio waves and use the below-preprocessing\n"
-          ">> steps to deal with this. Here are the two steps we’ll follow:\n"
+          ">> Let us read the audio waves and use the below-preprocessing\n"
+          ">> steps to deal with the disparity in presentation length. Here\n"
+          ">> are the two steps we’ll follow:\n"
           ">>\n"
           ">> -> Resampling\n"
           ">> -> Removing commands shorter than 1 second\n"
-          ">>\n"
-          ">> Let us define these preprocessing steps in the below code snippet:\n"
           ">>\n")
 
     all_wave = []
@@ -123,129 +86,23 @@ if __name__ == '__main__':
                 all_wave.append(samples)
                 all_label.append(label)
 
-    print("\n>>\n"
-          ">> Convert the output labels to integer encoded:\n"
-          ">>\n")
+    # Convert the output labels to integer encoded
     le = LabelEncoder()
     y = le.fit_transform(all_label)
     classes = list(le.classes_)
 
     y = tf.keras.utils.to_categorical(y, num_classes=len(labels))
 
-    # Reshape the 2D array to 3D since the input to the conv1d must be a 3D array:
-    all_wave = np.array(all_wave)  # .reshape(-1, 8000, 1)
+    # Cast data to numpy array.
+    all_wave = np.array(all_wave)
     print(f"Training Data Shape: {all_wave.shape}")
     print(f"Presentation Shape: {all_wave[0].shape}")
 
-    print("\n>>\n"
-          ">> Next, we will train the model on 80% of the data and validate on the remaining 20%:\n"
-          ">>\n")
+    # Next, we will train the model on 80% of the data and validate on the remaining 20%:\n"
     x_tr, x_val, y_tr, y_val = train_test_split(all_wave, np.array(y), stratify=y, test_size=0.2,
                                                 random_state=777, shuffle=True)
-                                                
-    def training_generator(batch_size, inputs, outputs, augment=True):
-    
-        max_index = np.floor(all_wave.shape[0] * 0.8)
-    
-        def add_noise(data, noise_factor):
-            noise = np.random.randn(len(data))
-            augmented_data = data + noise_factor * noise
-            # Cast back to same data type
-            augmented_data = augmented_data.astype(type(data[0]))
-            return augmented_data
-            
-        def time_shift(data, sampling_rate, shift_max, shift_direction):
-            shift = np.random.randint(sampling_rate * shift_max)
-            if shift_direction == 'right':
-                shift = -shift
-            elif shift_direction == 'both':
-                direction = np.random.randint(0, 2)
-                if direction == 1:
-                    shift = -shift
-            augmented_data = np.roll(data, shift)
-            # Set to silence for heading/ tailing
-            if shift > 0:
-                augmented_data[:shift] = 0
-            else:
-                augmented_data[shift:] = 0
-            return augmented_data
-            
-        def pitch_shift(data, sampling_rate, pitch_factor):
-            return librosa.effects.pitch_shift(data[0, :], sampling_rate, pitch_factor)
-            
-        # def speed_change(data, speed_factor):
-            # return librosa.effects.time_stretch(data, speed_factor)
-            
-        while True:
-            batch_samples = []
-            batch_targets = []
-            
-            for i in range(batch_size):
-                index = np.random.randint(0, high=max_index)
-                
-                noise_f = np.random.rand(1, 1)
-                time_shift_max = 0.3
-                pitch_s = np.random.rand(1, 1)
-                speed_c = 2 * np.random.rand(1, 1)
-                
-                augmented_input = add_noise(inputs[index], noise_f)
-                augmented_input = time_shift(augmented_input, 8000, time_shift_max, 'both')
-                augmented_input = pitch_shift(augmented_input, 8000, pitch_s)
-                # augmented_input = speed_change(augmented_input, speed_c)
-                
-                batch_samples.append(augmented_input)
-                batch_targets.append(outputs[index])
-                
-            yield np.array(batch_samples), batch_targets
-            
-    # train_gen = training_generator(32, x_tr, y_tr)
-    
-    # print("Training generator defined and instantiated\n")
-
+  
     start_time = time.time()
-    # Define The standard Model, no DFT
-
-    # inputs = Input(shape=(8000, 1))
-
-    # # Standard Model
-    # # First Conv1D layer
-    # conv = layers.Conv1D(8, 13, padding='valid', activation='relu', strides=1)(inputs)
-    # conv = layers.MaxPooling1D(3)(conv)
-    # conv = layers.Dropout(0.3)(conv)
-    
-    # # Second Conv1D layer
-    # conv = layers.Conv1D(16, 11, padding='valid', activation='relu', strides=1)(conv)
-    # conv = layers.MaxPooling1D(3)(conv)
-    # conv = layers.Dropout(0.3)(conv)
-    
-    # # Third Conv1D layer
-    # conv = layers.Conv1D(32, 9, padding='valid', activation='relu', strides=1)(conv)
-    # conv = layers.MaxPooling1D(3)(conv)
-    # conv = layers.Dropout(0.3)(conv)
-    
-    # # Fourth Conv1D layer
-    # conv = layers.Conv1D(64, 7, padding='valid', activation='relu', strides=1)(conv)
-    # conv = layers.MaxPooling1D(3)(conv)
-    # conv = layers.Dropout(0.3)(conv)
-    
-    # # Flatten layer
-    # conv = layers.Flatten()(conv)
-    
-    # # Dense Layer 1
-    # conv = layers.Dense(256, activation='relu')(conv)
-    # conv = layers.Dropout(0.3)(conv)
-    
-    # # Dense Layer 2
-    # conv = layers.Dense(128, activation='relu')(conv)
-    # conv = layers.Dropout(0.3)(conv)
-
-    # outputs = layers.Dense(len(labels), activation='softmax')(conv)
-    
-    # model = Model(inputs, outputs)
-    # model.summary()
-    
-    # # Define the loss function to be categorical cross-entropy since it is a multi-classification problem:
-    # model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
     # Define The DFT Model
     inputs = Input(shape=(8000, ))
@@ -386,19 +243,17 @@ if __name__ == '__main__':
 
     model = Model(inputs, outputs)
 
-    print(f"\n\t--------- Model building took {(time.time() - start_time)} seconds ---------\n")
-
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    
+    print(f"\n\t--------- Model building took {(time.time() - start_time)} seconds ---------\n")
+    
     model.summary()
 
     # Early stopping and model checkpoints are the callbacks to stop training the neural network at the right time and
     # to save the best model after every epoch:
     es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=5, min_delta=0.0001)
-    mc = ModelCheckpoint("C:\\Users\\owatkins\\OneDrive - Analog Devices, Inc\\Documents\\Project Folder\\Project 3\\Code\\"
-               "Intelligent_Signal_Reader\\best_model.hdf5", monitor='val_acc', verbose=1, save_best_only=True, mode='max')
 
     history = model.fit(x_tr, y_tr, epochs=100, callbacks=[es], batch_size=32, validation_data=(x_val, y_val))
-    # history = model.fit(train_gen, epochs=100, callbacks=[es], steps_per_epoch=50, validation_data=(x_val, y_val))
 
     model.save("C:\\Users\\owatkins\\OneDrive - Analog Devices, Inc\\Documents\\Project Folder\\Project 3\\Code\\"
                "Intelligent_Signal_Reader\\DFT_model.h5", include_optimizer=False)
