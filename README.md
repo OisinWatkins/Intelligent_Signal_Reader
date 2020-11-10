@@ -3,8 +3,8 @@ This project contains all files pertaining to my attempt to design an intelligen
 
 ### Primary Code Base
 _Fourier_Transform.py_ contains the code involved in performing a Discrete Fourier Transform (DFT)
-and the definitions of DFT and FFT layers which can be added to a network. These layers
-contain very few attributes, the primary attribute being the "twiddle array", which is the active matrix used to 
+and the definition of DFT layer which can be added to a network. This layercontain very few attributes,
+the primary attribute being the "twiddle array", which is the active matrix used to 
 perform the transform. This matrix is trained over time.
 
 _DFT_Model_Demo.py_ contains code for the definition and training of a full model which uses the 
