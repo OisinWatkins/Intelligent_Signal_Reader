@@ -50,8 +50,7 @@ if __name__ == '__main__':
           ">> https://github.com/aravindpai/Speech-Recognition/blob/master/Speech%20Recognition.ipynb\n"
           ">>\n")
           
-    train_audio_path = 'C:\\Users\\owatkins\\OneDrive - Analog Devices, Inc\\Documents\\Project Folder\\Project 3\\' \
-                       'tensorflow-speech-recognition-challenge\\train\\audio'
+    train_audio_path = 'D:\\Datasets\\tensorflow-speech-recognition-challenge\\train\\audio'
     samples, sample_rate = librosa.load(train_audio_path + '\\yes\\0a7c2a8d_nohash_0.wav', sr=16000)
 
     # Let us now look at the sampling rate of the audio signals
@@ -255,8 +254,7 @@ if __name__ == '__main__':
 
     history = model.fit(x_tr, y_tr, epochs=100, callbacks=[es], batch_size=32, validation_data=(x_val, y_val))
 
-    model.save("C:\\Users\\owatkins\\OneDrive - Analog Devices, Inc\\Documents\\Project Folder\\Project 3\\Code\\"
-               "Intelligent_Signal_Reader\\DFT_model.h5", include_optimizer=False)
+    model.save("DFT_model.h5", include_optimizer=False)
                
     print("Model Saved!")
 
