@@ -57,10 +57,10 @@ class DFT(layers.Layer):
             the `twiddle` weights matrix.
 
     Input shape:
-        N-D tensor with shape: `(batch_size, num_samples)`.
+        2-D tensor with shape: `(batch_size, num_samples)`.
 
     Output shape:
-        N-D tensor with shape: `(batch_size, num_samples)`.
+        2-D tensor with shape: `(batch_size, num_samples)`.
     """
 
     def __init__(self, num_samples: int=None, twiddle_initialiser=None, kernel_regularizer=None, kernel_constraint=None, **kwargs):
