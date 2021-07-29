@@ -30,5 +30,5 @@ any final application, it is only a platform to play with training settings and 
 Contains a number of .txt files, .png files and a few .h5 files all pertaining the the training attempts conducted as experiments
 for the Layer designed in the Primary Code Base.
 
-####Referneces
+#### Referneces
 Houses all the Literature used as reference for this project, as well as a few presentations I wrote to accompany this work.
