@@ -12,22 +12,23 @@ DFT Layer to process 1-second audio inputs before processing the resulting tenso
 Multiple model topographies were attempted, of each topography only the best performing model was saved.
 All training attempts have had their printed output saved for reference
 
-_Standard_Model_Demo.py_ contains code for the definition and training of a full model which uses the 
-processes 1-second audio inputs using 1-D convnets. Multiple model topographies were attempted, of each
-topography only the best performing model was saved. All training attempts have had their printed 
-output saved for reference
+### Misc
 
-_Model_Comparison.py_ is a work in progress file which will load all of the saved models and evaluate them
-on new test data. I do not as of yet have the data needed to test these models, so I will return to this 
-file once more data has been sourced.
+_Intelligent DFT.docx_ is the paper which documents all the work done in this project, from the MATLAB proof of concept to the
+latest Python implementation.
 
-### Demonstration
+_Diagrams.ppt_ is the PowerPoint presentation where I designed all the diagams used in the Intelligent DFT.docx paper.
+
+#### Demonstration
 Contains some MATLAB code, a MATLAB Application, as well as a collection of images used in the demonstration of this code.
 
 _Intelligent DFT.mlapp_ is a MATLAB application which is used to demo this idea and provide both a proof of concept and
 an active demonstration of this algorithm being used in a Radio reciever. Nothing in this file is meant to be exported to
 any final application, it is only a platform to play with training settings and get a feel for how the system behaves.
 
-### Models
+#### Models
 Contains a number of .txt files, .png files and a few .h5 files all pertaining the the training attempts conducted as experiments
-for the Layer designed in the Primary Code Base
+for the Layer designed in the Primary Code Base.
+
+####Referneces
+Houses all the Literature used as reference for this project, as well as a few presentations I wrote to accompany this work.
